@@ -1,31 +1,32 @@
-require('dotenv').config();
+require('dotenv').config(); // Load environment variables, e.g. GOOGLE_MAPS_API_KEY
 
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const cors = require('cors');
+const cors = require('cors'); // If needed for cross-origin requests
 
 const app = express();
+const PORT = 4000; // or your preferred port
 
-// Choose your PORT
-const PORT = 4000;
-
-console.log('API KEY from .env:', process.env.GOOGLE_MAPS_API_KEY);
+// Optionally enable all CORS requests (for dev)
+app.use(cors());
 
 // Path to the CSV file
 const dataFilePath = path.join(__dirname, 'data', 'data.csv');
 
-app.use(cors());
-
-// Middleware to serve static files (e.g., the front-end)
+// Serve static files if desired (e.g. your frontend)
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 
-// Route to return the Maps API key
+/**
+ * 1) Return the Google Maps API key (from .env)
+ */
 app.get('/api/mapkey', (req, res) => {
   res.json({ key: process.env.GOOGLE_MAPS_API_KEY });
 });
 
-// Route to download the CSV file
+/**
+ * 2) Download the CSV file (existing route)
+ */
 app.get('/download', (req, res) => {
   if (fs.existsSync(dataFilePath)) {
     res.download(dataFilePath, 'data.csv', (err) => {
@@ -39,7 +40,9 @@ app.get('/download', (req, res) => {
   }
 });
 
-// Route to clear the CSV file
+/**
+ * 3) Clear the CSV file
+ */
 app.post('/clear', (req, res) => {
   if (fs.existsSync(dataFilePath)) {
     fs.writeFile(dataFilePath, '', (err) => {
@@ -55,19 +58,44 @@ app.post('/clear', (req, res) => {
 });
 
 /**
- * LOCALHOST VERSION:
- * Listen on localhost so it's only accessible on your computer.
+ * 4) NEW ENDPOINT: Return parsed data from data.csv as JSON
+ *    Format: [{ timestamp, lat, lng, sensorData }, ...]
  */
-app.listen(PORT, '127.0.0.1', () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+app.get('/points', (req, res) => {
+  if (!fs.existsSync(dataFilePath)) {
+    return res.status(404).json({ error: 'File not found.' });
+  }
+
+  try {
+    const csvText = fs.readFileSync(dataFilePath, 'utf8');
+    const lines = csvText.split('\n').filter((ln) => ln.trim() !== '');
+
+    // Check if first line is a header
+    const hasHeader = lines[0].toLowerCase().includes('timestamp');
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+
+    // Parse each line into an object
+    const points = dataLines.map((line) => {
+      const [timestamp, latStr, lngStr, sensorStr] = line.split(',').map((s) => s.trim());
+      return {
+        timestamp,
+        lat: parseFloat(latStr),
+        lng: parseFloat(lngStr),
+        sensorData: parseInt(sensorStr, 10),
+      };
+    });
+
+    res.json(points);
+  } catch (err) {
+    console.error('Error reading/ parsing CSV:', err);
+    res.status(500).json({ error: 'Error parsing file.' });
+  }
 });
 
-/** 
- * RASPBERRY PI VERSION (COMMENTED):
- * If you want to host on the Pi’s AP (192.168.4.1), 
- * comment out the above block and uncomment below:
+/**
+ * Start the server
  */
-
-// app.listen(PORT, '0.0.0.0', () => {
-//   console.log(`Server is running on http://192.168.4.1:${PORT}`);
-// });
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+  // For Raspberry Pi AP: console.log(`Server is running on http://192.168.4.1:${PORT}`);
+});
