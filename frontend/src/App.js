@@ -5,7 +5,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import UploadPage from './pages/UploadPage';
 import MapPage from './pages/MapPage';
-import ViewLocation from './pages/ViewLocation';
 
 function App() {
   return (
@@ -14,7 +13,6 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/map" element={<MapPage />} />
-        <Route path="/location" element={<ViewLocation />} />
       </Routes>
     </Router>
   );
