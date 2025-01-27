@@ -13,6 +13,12 @@ const center = {
   lng: -71.10594229179111,
 };
 
+// Toggle or edit these URLs as needed
+// By default, we'll use localhost for local development.
+const BASE_URL = 'http://localhost:4000';
+// For Raspberry Pi hosting, comment the above and uncomment below:
+// const BASE_URL = 'http://192.168.4.1:4000';
+
 function App() {
   const [mapKey, setMapKey] = useState(null);
   const [waypoint, setWaypoint] = useState(null);
@@ -21,13 +27,12 @@ function App() {
   useEffect(() => {
     const fetchKey = async () => {
       try {
-        const response = await axios.get('http://localhost:4000/api/mapkey');
+        const response = await axios.get(`${BASE_URL}/api/mapkey`);
         setMapKey(response.data.key);
       } catch (error) {
         console.error('Error fetching Maps API key:', error);
       }
     };
-
     fetchKey();
   }, []);
 
@@ -41,8 +46,8 @@ function App() {
   // 3) Clear the CSV file on the server
   const handleClearCsv = async () => {
     try {
-      const response = await axios.post('http://localhost:4000/clear');
-      alert(response.data);
+      const response = await axios.post(`${BASE_URL}/clear`);
+      alert(response.data); // e.g. "File cleared successfully."
     } catch (error) {
       console.error('Error clearing CSV:', error);
       alert('Failed to clear CSV');
@@ -78,7 +83,7 @@ function App() {
 
       <div style={{ marginTop: '20px' }}>
         {/* Download data.csv */}
-        <a href="http://localhost:4000/download" download>
+        <a href={`${BASE_URL}/download`} download>
           <button>Download CSV</button>
         </a>
 
