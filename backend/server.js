@@ -1,3 +1,5 @@
+require('dotenv').config(); // at the top of server.js
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -10,6 +12,11 @@ const dataFilePath = path.join(__dirname, 'data', 'data.csv');
 
 // Middleware to serve static files (e.g., the front-end)
 app.use(express.static(path.join(__dirname, '../frontend/public')));
+
+// Route to return the Maps API key
+app.get('/api/mapkey', (req, res) => {
+    res.json({ key: process.env.GOOGLE_MAPS_API_KEY });
+  });  
 
 // Route to download the CSV file
 app.get('/download', (req, res) => {
