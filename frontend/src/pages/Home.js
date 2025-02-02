@@ -60,7 +60,7 @@ function Home() {
   /** Render Markers from Waypoints */
   const renderMarkers = () => {
     if (!points || points.length === 0) return null;
-
+  
     console.log('Rendering waypoints:', points);
     return points.map((pt, idx) => {
       if (!pt.lat || !pt.lng) {
@@ -71,10 +71,15 @@ function Home() {
         <Marker
           key={idx}
           position={{ lat: Number(pt.lat), lng: Number(pt.lng) }}
+          icon={{
+            url: idx === points.length - 1 
+              ? 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'  // Green for last point
+              : 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',  // Default (red) for others
+          }}
         />
       );
     });
-  };
+  };  
 
   // Show loading message if API key isn't ready yet
   if (!mapKey) {
