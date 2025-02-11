@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
-// Adjust BASE_URL if hosting on Raspberry Pi: 'http://192.168.4.1:4000'
+// Adjust BASE_URL if needed
 const BASE_URL = 'http://localhost:4000';
 
 const mapContainerStyle = {
@@ -11,12 +11,11 @@ const mapContainerStyle = {
   height: '600px',
 };
 
-// Example map center (Boston)
 const center = { lat: 42.34920513249211, lng: -71.10594229179111 };
 
 function MapPage() {
   const [mapKey, setMapKey] = useState(null);
-  const [waypoint, setWaypoint] = useState(null);
+  const [waypoints, setWaypoints] = useState([]);
 
   // Fetch Google Maps API key from server
   useEffect(() => {
@@ -31,28 +30,44 @@ function MapPage() {
     fetchKey();
   }, []);
 
-  // Handle map click to set a single waypoint
+  // Add a new waypoint on map click
   const handleMapClick = (e) => {
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
-    setWaypoint({ lat, lng });
+    setWaypoints((prevWaypoints) => [...prevWaypoints, { lat, lng }]);
   };
 
-  // Clear CSV file on server
+  // Clear the sensor CSV file on the server (if needed)
   const handleClearCsv = async () => {
     try {
-      const response = await axios.post(`${BASE_URL}/clear`);
-      alert(response.data); // e.g. 'File cleared successfully.'
+      const response = await axios.post(`${BASE_URL}/clear_location_csv`);
+      alert(response.data);
     } catch (error) {
       console.error('Error clearing CSV:', error);
       alert('Failed to clear CSV');
     }
   };
 
+  // Upload the current list of waypoints to the server
+  const handleUploadCoordinates = async () => {
+    try {
+      const response = await axios.post(`${BASE_URL}/uploadWaypoints`, { waypoints });
+      alert(response.data.message);
+    } catch (error) {
+      console.error('Error uploading waypoints:', error);
+      alert('Failed to upload waypoints.');
+    }
+  };
+
+  // Clear the table of waypoints in the frontend
+  const handleClearTable = () => {
+    setWaypoints([]);
+  };
+
   if (!mapKey) {
     return (
       <div style={{ margin: '20px' }}>
-        <h2>Map Page</h2>
+        <h2>Select Your Course</h2>
         <p>Loading Google Maps key...</p>
         <Link to="/">
           <button>Back</button>
@@ -63,46 +78,84 @@ function MapPage() {
 
   return (
     <div style={{ margin: '20px' }}>
-      <h2>Map Page</h2>
+      <h2>Select Your Course</h2>
       <Link to="/">
         <button>Back</button>
       </Link>
 
-      <LoadScript googleMapsApiKey={mapKey}>
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
-          center={center}
-          zoom={8}
-          onClick={handleMapClick}
-        >
-          {waypoint && (
-            <Marker
-              position={{ lat: waypoint.lat, lng: waypoint.lng }}
-              icon="http://maps.google.com/mapfiles/ms/icons/red-dot.png"
-            />
+      <div style={{ display: 'flex', marginTop: '1rem' }}>
+        {/* Left Column: Map & Controls */}
+        <div style={{ flex: 2, marginRight: '20px' }}>
+          {/* Map Container */}
+          <div>
+            <LoadScript googleMapsApiKey={mapKey}>
+              <GoogleMap
+                mapContainerStyle={mapContainerStyle}
+                center={center}
+                zoom={8}
+                onClick={handleMapClick}
+              >
+                {waypoints.map((point, index) => (
+                  <Marker
+                    key={index}
+                    position={{ lat: point.lat, lng: point.lng }}
+                    icon="http://maps.google.com/mapfiles/ms/icons/red-dot.png"
+                  />
+                ))}
+              </GoogleMap>
+            </LoadScript>
+          </div>
+          {/* Controls just below the map */}
+          <div
+            style={{
+              marginTop: '5px',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
+            <a href={`${BASE_URL}/download_waypoints`} download>
+              <button>Download Coordinates</button>
+            </a>
+            <button onClick={handleClearCsv} style={{ marginLeft: '5px' }}>
+              Clear Coordinates Onboard
+            </button>
+            <button onClick={handleUploadCoordinates} style={{ marginLeft: '5px' }}>
+              Upload Coordinates
+            </button>
+            <button onClick={handleClearTable} style={{ marginLeft: '5px' }}>
+              Clear Table
+            </button>
+          </div>
+        </div>
+
+        {/* Right Column: Waypoints Table */}
+        <div style={{ flex: 1 }}>
+          <h3>Selected Waypoints</h3>
+          {waypoints.length > 0 ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ border: '1px solid #ccc', padding: '8px' }}>No.</th>
+                  <th style={{ border: '1px solid #ccc', padding: '8px' }}>Latitude</th>
+                  <th style={{ border: '1px solid #ccc', padding: '8px' }}>Longitude</th>
+                </tr>
+              </thead>
+              <tbody>
+                {waypoints.map((point, index) => (
+                  <tr key={index}>
+                    <td style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'center' }}>
+                      {index + 1}
+                    </td>
+                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>{point.lat}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>{point.lng}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p>No waypoints selected.</p>
           )}
-        </GoogleMap>
-      </LoadScript>
-
-      <div style={{ marginTop: '1rem' }}>
-        <h3>Selected Waypoint</h3>
-        {waypoint ? (
-          <p>
-            Lat: {waypoint.lat}, Lng: {waypoint.lng}
-          </p>
-        ) : (
-          <p>No waypoint selected.</p>
-        )}
-      </div>
-
-      {/* Download & Clear Controls */}
-      <div style={{ marginTop: '2rem' }}>
-        <a href={`${BASE_URL}/download`} download>
-          <button>Download CSV</button>
-        </a>
-        <button onClick={handleClearCsv} style={{ marginLeft: '10px' }}>
-          Clear CSV
-        </button>
+        </div>
       </div>
     </div>
   );

@@ -11,9 +11,6 @@ const mapContainerStyle = {
   height: '600px',
 };
 
-// Center the map near Narragansett Bay
-const mapCenter = { lat: 41.55, lng: -71.4 };
-
 function Home() {
   const [mapKey, setMapKey] = useState(null);
   const [points, setPoints] = useState([]);
@@ -51,16 +48,27 @@ function Home() {
     fetchData(); // Initial fetch
 
     const interval = setInterval(() => {
-      fetchData();
-    }, 5000); // Refresh every 5 seconds
+      fetchData(); // Keep fetching data every 5 seconds
+    }, 5000);
 
     return () => clearInterval(interval); // Cleanup on unmount
   }, []);
 
+  /** Handle CSV Clear */
+  const handleClearCsv = async () => {
+    try {
+      await axios.post(`${BASE_URL}/clear_location_csv`);
+      setPoints([]); // Clear points on the frontend as well
+      console.log('CSV cleared');
+    } catch (error) {
+      console.error('Error clearing CSV:', error);
+    }
+  };
+
   /** Render Markers from Waypoints */
   const renderMarkers = () => {
     if (!points || points.length === 0) return null;
-  
+
     console.log('Rendering waypoints:', points);
     return points.map((pt, idx) => {
       if (!pt.lat || !pt.lng) {
@@ -79,7 +87,7 @@ function Home() {
         />
       );
     });
-  };  
+  };
 
   // Show loading message if API key isn't ready yet
   if (!mapKey) {
@@ -97,10 +105,9 @@ function Home() {
     );
   }
 
-  // Render the map with waypoints dynamically updating every 5 seconds
   return (
     <div style={{ margin: '20px' }}>
-      <h1>Home - Showing Waypoints from data.csv</h1>
+      <h1>Location Tracker</h1>
 
       <div style={{ marginBottom: '10px' }}>
         <Link to="/upload">
@@ -114,12 +121,21 @@ function Home() {
       <LoadScript googleMapsApiKey={mapKey}>
         <GoogleMap
           mapContainerStyle={mapContainerStyle}
-          center={mapCenter}
-          zoom={10}
+          zoom={10} // Use a fixed zoom level (no centering logic)
         >
           {renderMarkers()}
         </GoogleMap>
       </LoadScript>
+
+      {/* Download & Clear Controls */}
+      <div style={{ marginTop: '2rem' }}>
+        <a href={`${BASE_URL}/download_location`} download>
+          <button>Download CSV</button>
+        </a>
+        <button onClick={handleClearCsv} style={{ marginLeft: '10px' }}>
+          Clear CSV
+        </button>
+      </div>
     </div>
   );
 }

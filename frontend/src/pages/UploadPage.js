@@ -33,7 +33,7 @@ function UploadPage() {
   // Clear CSV file on server
   const handleClearCsv = async () => {
     try {
-      const response = await axios.post(`${BASE_URL}/clear`);
+      const response = await axios.post(`${BASE_URL}/clear_location_csv`);
       alert(response.data); // e.g. 'File cleared successfully.'
     } catch (error) {
       console.error('Error clearing CSV:', error);
@@ -60,16 +60,6 @@ function UploadPage() {
         ) : (
           <p>No coordinates loaded.</p>
         )}
-      </div>
-
-      {/* Download & Clear Controls */}
-      <div style={{ marginTop: '2rem' }}>
-        <a href={`${BASE_URL}/download`} download>
-          <button>Download CSV</button>
-        </a>
-        <button onClick={handleClearCsv} style={{ marginLeft: '10px' }}>
-          Clear CSV
-        </button>
       </div>
     </div>
   );

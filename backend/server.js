@@ -12,10 +12,13 @@ const PORT = 4000; // or your preferred port
 app.use(cors());
 
 // Path to the CSV file
-const dataFilePath = path.join(__dirname, 'data', 'data.csv');
+const locationFilePath = path.join(__dirname, 'data', 'data.csv');
+const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv')
 
 // Serve static files if desired (e.g. your frontend)
 app.use(express.static(path.join(__dirname, '../frontend/public')));
+
+app.use(express.json())
 
 /**
  * 1) Return the Google Maps API key (from .env)
@@ -27,9 +30,25 @@ app.get('/api/mapkey', (req, res) => {
 /**
  * 2) Download the CSV file (existing route)
  */
-app.get('/download', (req, res) => {
-  if (fs.existsSync(dataFilePath)) {
-    res.download(dataFilePath, 'data.csv', (err) => {
+app.get('/download_location', (req, res) => {
+  if (fs.existsSync(locationFilePath)) {
+    res.download(locationFilePath, 'data.csv', (err) => {
+      if (err) {
+        console.error('Error during file download:', err);
+        res.status(500).send('Error downloading the file.');
+      }
+    });
+  } else {
+    res.status(404).send('File not found.');
+  }
+});
+
+/**
+ * 2) Download the CSV file (existing route)
+ */
+app.get('/download_waypoints', (req, res) => {
+  if (fs.existsSync(waypointsFilePath)) {
+    res.download(waypointsFilePath, 'waypoints.csv', (err) => {
       if (err) {
         console.error('Error during file download:', err);
         res.status(500).send('Error downloading the file.');
@@ -43,9 +62,23 @@ app.get('/download', (req, res) => {
 /**
  * 3) Clear the CSV file
  */
-app.post('/clear', (req, res) => {
-  if (fs.existsSync(dataFilePath)) {
-    fs.writeFile(dataFilePath, '', (err) => {
+app.post('/clear_location_csv', (req, res) => {
+  if (fs.existsSync(locationFilePath)) {
+    fs.writeFile(locationFilePath, '', (err) => {
+      if (err) {
+        console.error('Error clearing the file:', err);
+        return res.status(500).send('Error clearing the file.');
+      }
+      res.send('File cleared successfully.');
+    });
+  } else {
+    res.status(404).send('File not found.');
+  }
+});
+
+app.post('/clear_waypoints_csv', (req, res) => {
+  if (fs.existsSync(waypointsFilePath)) {
+    fs.writeFile(waypointsFilePath, '', (err) => {
       if (err) {
         console.error('Error clearing the file:', err);
         return res.status(500).send('Error clearing the file.');
@@ -62,12 +95,12 @@ app.post('/clear', (req, res) => {
  *    Format: [{ timestamp, lat, lng, sensorData }, ...]
  */
 app.get('/points', (req, res) => {
-  if (!fs.existsSync(dataFilePath)) {
+  if (!fs.existsSync(locationFilePath)) {
     return res.status(404).json({ error: 'File not found.' });
   }
 
   try {
-    const csvText = fs.readFileSync(dataFilePath, 'utf8');
+    const csvText = fs.readFileSync(locationFilePath, 'utf8');
     const lines = csvText.split('\n').filter((ln) => ln.trim() !== '');
 
     // Check if first line is a header
@@ -90,6 +123,39 @@ app.get('/points', (req, res) => {
     console.error('Error reading/ parsing CSV:', err);
     res.status(500).json({ error: 'Error parsing file.' });
   }
+});
+
+/**
+ * Expects a JSON payload:
+ *    { waypoints: [ { lat: number, lng: number }, ... ] }
+ * Saves the waypoints into a CSV file named "waypoints.csv" in a folder called "waypoints" on the backend.
+ */
+app.post('/uploadWaypoints', (req, res) => {
+  // req.body should now be populated thanks to express.json()
+  const waypoints = req.body.waypoints;
+  if (!Array.isArray(waypoints)) {
+    return res.status(400).json({ error: 'Invalid waypoints data. Expected an array.' });
+  }
+
+  // Create the folder if it doesn't exist
+  if (!fs.existsSync(waypointsFilePath)) {
+    fs.mkdirSync(waypointsFilePath, { recursive: true });
+  }
+
+  // Format the CSV data. Header: No, Latitude, Longitude
+  let csvContent = 'No,Latitude,Longitude\n';
+  waypoints.forEach((point, index) => {
+    csvContent += `${index + 1},${point.lat},${point.lng}\n`;
+  });
+
+  // Write the CSV file to the "waypoints" folder
+  fs.writeFile(waypointsFilePath, csvContent, (err) => {
+    if (err) {
+      console.error('Error writing waypoints file:', err);
+      return res.status(500).json({ error: 'Failed to upload waypoints.' });
+    }
+    res.json({ message: 'Waypoints uploaded successfully.', file: 'waypoints.csv' });
+  });
 });
 
 /**
