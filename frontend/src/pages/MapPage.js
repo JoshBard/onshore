@@ -70,7 +70,7 @@ function MapPage() {
         <h2>Select Your Course</h2>
         <p>Loading Google Maps key...</p>
         <Link to="/">
-          <button>Back</button>
+          <button>Home</button>
         </Link>
       </div>
     );
@@ -80,7 +80,7 @@ function MapPage() {
     <div style={{ margin: '20px' }}>
       <h2>Select Your Course</h2>
       <Link to="/">
-        <button>Back</button>
+        <button>Home</button>
       </Link>
 
       <div style={{ display: 'flex', marginTop: '1rem' }}>

@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
-const BASE_URL = 'http://localhost:4000'; 
-// If hosting on Pi: const BASE_URL = 'http://192.168.4.1:4000';
+const BASE_URL = 'http://localhost:4000';
+
+const mapCenter = { lat: 41.55, lng: -71.4 };
 
 const mapContainerStyle = {
   width: '100%',
@@ -15,7 +16,6 @@ function Home() {
   const [mapKey, setMapKey] = useState(null);
   const [points, setPoints] = useState([]);
 
-  /** Fetch Google Maps API Key (Run only once) */
   useEffect(() => {
     const fetchMapKey = async () => {
       try {
@@ -27,10 +27,9 @@ function Home() {
       }
     };
 
-    fetchMapKey(); // Call once on component mount
+    fetchMapKey();
   }, []);
 
-  /** Fetch Data Points (Refreshes every 5 seconds) */
   const fetchData = async () => {
     try {
       const pointsResponse = await axios.get(`${BASE_URL}/points`);
@@ -45,31 +44,27 @@ function Home() {
   };
 
   useEffect(() => {
-    fetchData(); // Initial fetch
-
+    fetchData();
     const interval = setInterval(() => {
-      fetchData(); // Keep fetching data every 5 seconds
+      fetchData();
     }, 5000);
 
-    return () => clearInterval(interval); // Cleanup on unmount
+    return () => clearInterval(interval);
   }, []);
 
-  /** Handle CSV Clear */
   const handleClearCsv = async () => {
     try {
       await axios.post(`${BASE_URL}/clear_location_csv`);
-      setPoints([]); // Clear points on the frontend as well
+      setPoints([]);
       console.log('CSV cleared');
     } catch (error) {
       console.error('Error clearing CSV:', error);
     }
   };
 
-  /** Render Markers from Waypoints */
   const renderMarkers = () => {
     if (!points || points.length === 0) return null;
 
-    console.log('Rendering waypoints:', points);
     return points.map((pt, idx) => {
       if (!pt.lat || !pt.lng) {
         console.warn("Skipping invalid waypoint:", pt);
@@ -81,15 +76,14 @@ function Home() {
           position={{ lat: Number(pt.lat), lng: Number(pt.lng) }}
           icon={{
             url: idx === points.length - 1 
-              ? 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'  // Green for last point
-              : 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',  // Default (red) for others
+              ? 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
+              : 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
           }}
         />
       );
     });
   };
 
-  // Show loading message if API key isn't ready yet
   if (!mapKey) {
     return (
       <div style={{ margin: '20px' }}>
@@ -106,35 +100,64 @@ function Home() {
   }
 
   return (
-    <div style={{ margin: '20px' }}>
-      <h1>Location Tracker</h1>
+    <div style={{ display: 'flex', flexDirection: 'row', margin: '20px' }}>
+      <div style={{ flex: 2, marginRight: '20px' }}>
+        <h1>Location Tracker</h1>
 
-      <div style={{ marginBottom: '10px' }}>
-        <Link to="/upload">
-          <button>Go to Upload Page</button>
-        </Link>
-        <Link to="/map" style={{ marginLeft: '10px' }}>
-          <button>Go to Map Page</button>
-        </Link>
+        <div style={{ marginBottom: '10px' }}>
+          <Link to="/upload">
+            <button>Upload Path Coordinates</button>
+          </Link>
+          <Link to="/map" style={{ marginLeft: '10px' }}>
+            <button>Choose Path Coordinates On a Map</button>
+          </Link>
+        </div>
+
+        <LoadScript googleMapsApiKey={mapKey}>
+          <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={10}>
+            {renderMarkers()}
+          </GoogleMap>
+        </LoadScript>
+
+        <div style={{ marginTop: '2rem' }}>
+          <a href={`${BASE_URL}/download_location`} download>
+            <button>Download Location CSV</button>
+          </a>
+          <button onClick={handleClearCsv} style={{ marginLeft: '10px' }}>
+            Clear Location CSV
+          </button>
+        </div>
       </div>
 
-      <LoadScript googleMapsApiKey={mapKey}>
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
-          zoom={10} // Use a fixed zoom level (no centering logic)
-        >
-          {renderMarkers()}
-        </GoogleMap>
-      </LoadScript>
-
-      {/* Download & Clear Controls */}
-      <div style={{ marginTop: '2rem' }}>
-        <a href={`${BASE_URL}/download_location`} download>
-          <button>Download CSV</button>
-        </a>
-        <button onClick={handleClearCsv} style={{ marginLeft: '10px' }}>
-          Clear CSV
-        </button>
+      {/* Data Table on the Right */}
+      <div style={{ flex: 1, maxHeight: '600px', overflowY: 'auto', border: '1px solid #ccc', padding: '10px' }}>
+        <h2>Waypoints</h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ border: '1px solid black', padding: '5px' }}>#</th>
+              <th style={{ border: '1px solid black', padding: '5px' }}>Latitude</th>
+              <th style={{ border: '1px solid black', padding: '5px' }}>Longitude</th>
+              <th style={{ border: '1px solid black', padding: '5px' }}>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            {points.length > 0 ? (
+              points.slice().reverse().map((pt, idx) => (
+                <tr key={idx}>
+                  <td style={{ border: '1px solid black', padding: '5px', textAlign: 'center' }}>{points.length - idx}</td>
+                  <td style={{ border: '1px solid black', padding: '5px' }}>{pt.lat}</td>
+                  <td style={{ border: '1px solid black', padding: '5px' }}>{pt.lng}</td>
+                  <td style={{ border: '1px solid black', padding: '5px' }}>{pt.timestamp}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" style={{ textAlign: 'center', padding: '10px' }}>No waypoints available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
