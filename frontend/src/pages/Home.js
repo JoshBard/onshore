@@ -106,19 +106,6 @@ function Home() {
     <div style={{ display: 'flex', flexDirection: 'row', margin: '20px' }}>
       <div style={{ flex: 2, marginRight: '20px' }}>
         <h1>Location Tracker</h1>
-
-        <div style={{ marginBottom: '10px' }}>
-          <Link to="/upload">
-            <button>Upload Path Coordinates</button>
-          </Link>
-          <Link to="/map" style={{ marginLeft: '10px' }}>
-            <button>Choose Path Coordinates On a Map</button>
-          </Link>
-          <Link to="/manual" style={{ marginLeft: '10px' }}>
-          <button>Manual Control Mode</button>
-          </Link>
-        </div>
-
         <LoadScript googleMapsApiKey={mapKey}>
           <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={10}>
             {renderMarkers()}

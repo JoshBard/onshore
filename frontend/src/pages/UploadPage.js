@@ -63,9 +63,6 @@ function UploadPage() {
       <button onClick={handleClearCsv} disabled={isClearing}>
         {isClearing ? 'Clearing...' : 'Clear Waypoints'}
       </button>
-      <Link to="/" style={{ marginLeft: '10px' }}>
-        <button>Back</button>
-      </Link>
     </div>
   );
 }
