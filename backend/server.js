@@ -197,7 +197,7 @@ app.post('/uploadWaypoints', (req, res) => {
 /**
  * Start the server
  */
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://localhost:${PORT}`);
-  // For Raspberry Pi AP: console.log(`Server is running on http://192.168.4.1:${PORT}`);
 });
+// For Raspberry Pi AP: console.log(`Server is running on http://192.168.4.1:${PORT}`);
