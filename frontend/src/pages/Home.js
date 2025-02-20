@@ -95,6 +95,9 @@ function Home() {
         <Link to="/map" style={{ marginLeft: '10px' }}>
           <button>Go to Map Page</button>
         </Link>
+        <Link to="/manual" style={{ marginLeft: '10px' }}>
+          <button>Manual Control Mode</button>
+        </Link>
       </div>
     );
   }
@@ -110,6 +113,9 @@ function Home() {
           </Link>
           <Link to="/map" style={{ marginLeft: '10px' }}>
             <button>Choose Path Coordinates On a Map</button>
+          </Link>
+          <Link to="/manual" style={{ marginLeft: '10px' }}>
+          <button>Manual Control Mode</button>
           </Link>
         </div>
 
@@ -131,7 +137,7 @@ function Home() {
 
       {/* Data Table on the Right */}
       <div style={{ flex: 1, maxHeight: '600px', overflowY: 'auto', border: '1px solid #ccc', padding: '10px' }}>
-        <h2>Waypoints</h2>
+        <h2>Live Location Readings</h2>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>

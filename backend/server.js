@@ -1,24 +1,46 @@
 require('dotenv').config(); // Load environment variables, e.g. GOOGLE_MAPS_API_KEY
 
 const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
 const fs = require('fs');
 const path = require('path');
-const cors = require('cors'); // If needed for cross-origin requests
+const cors = require('cors');
 
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+    cors: { origin: "http://localhost:3000", methods: ["GET", "POST"] }
+});
 const PORT = 4000; // or your preferred port
 
 // Optionally enable all CORS requests (for dev)
 app.use(cors());
+app.use(express.json());
 
 // Path to the CSV file
-const locationFilePath = path.join(__dirname, 'data', 'data.csv');
+const locationFilePath = path.join(__dirname, 'location_data', 'live_location.csv');
 const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv')
+const manualControlFilePath = path.join(__dirname, 'manualcontrol', 'input.txt');
+
+/**
+ * Only socket connection, used for WASD
+ */
+io.on('connection', (socket) => {
+  console.log('Client connected (WebSockets)');
+
+  socket.on('keypress', (command) => {
+      console.log(`Received command: ${command}`);
+      fs.writeFileSync(manualControlFilePath, command, 'utf8'); // Save latest keypress
+  });
+
+  socket.on('disconnect', () => {
+      console.log('Client disconnected');
+  });
+});
 
 // Serve static files if desired (e.g. your frontend)
 app.use(express.static(path.join(__dirname, '../frontend/public')));
-
-app.use(express.json())
 
 /**
  * 1) Return the Google Maps API key (from .env)
@@ -28,7 +50,7 @@ app.get('/api/mapkey', (req, res) => {
 });
 
 /**
- * 2) Download the CSV file (existing route)
+ * 2) Download CSV files
  */
 app.get('/download_location', (req, res) => {
   if (fs.existsSync(locationFilePath)) {
@@ -43,9 +65,7 @@ app.get('/download_location', (req, res) => {
   }
 });
 
-/**
- * 2) Download the CSV file (existing route)
- */
+
 app.get('/download_waypoints', (req, res) => {
   if (fs.existsSync(waypointsFilePath)) {
     res.download(waypointsFilePath, 'waypoints.csv', (err) => {
@@ -60,7 +80,7 @@ app.get('/download_waypoints', (req, res) => {
 });
 
 /**
- * 3) Clear the CSV file
+ * 3) Clear CSV files
  */
 app.post('/clear_location_csv', (req, res) => {
   if (fs.existsSync(locationFilePath)) {
@@ -91,8 +111,7 @@ app.post('/clear_waypoints_csv', (req, res) => {
 });
 
 /**
- * 4) NEW ENDPOINT: Return parsed data from data.csv as JSON
- *    Format: [{ timestamp, lat, lng, sensorData }, ...]
+ * 4) Get parsed location data from CSV
  */
 app.get('/points', (req, res) => {
   if (!fs.existsSync(locationFilePath)) {
@@ -126,25 +145,42 @@ app.get('/points', (req, res) => {
 });
 
 /**
- * Expects a JSON payload:
- *    { waypoints: [ { lat: number, lng: number }, ... ] }
- * Saves the waypoints into a CSV file named "waypoints.csv" in a folder called "waypoints" on the backend.
+ * 5) Upload Waypoints (Save to CSV)
  */
 app.post('/uploadWaypoints', (req, res) => {
-  // req.body should now be populated thanks to express.json()
-  const waypoints = req.body.waypoints;
-  if (!Array.isArray(waypoints)) {
-    return res.status(400).json({ error: 'Invalid waypoints data. Expected an array.' });
+  let { waypoints } = req.body;
+
+  if (!Array.isArray(waypoints) || waypoints.length === 0) {
+    return res.status(400).json({ error: 'No valid waypoints found.' });
   }
 
-  // Create the folder if it doesn't exist
-  if (!fs.existsSync(waypointsFilePath)) {
-    fs.mkdirSync(waypointsFilePath, { recursive: true });
+  // Detect if the first row is a header and remove it if needed
+  const firstRow = waypoints[0];
+  const isHeader =
+    (typeof firstRow.lat === 'string' && /lat|latitude/i.test(firstRow.lat)) &&
+    (typeof firstRow.lng === 'string' && /long|lon|longitude/i.test(firstRow.lng));
+
+  if (isHeader) {
+    waypoints = waypoints.slice(1); // Remove header row
   }
 
-  // Format the CSV data. Header: No, Latitude, Longitude
-  let csvContent = 'No,Latitude,Longitude\n';
-  waypoints.forEach((point, index) => {
+  // Process and validate waypoints
+  const cleanedWaypoints = waypoints
+    .map(({ lat, lng }) => {
+      const cleanLat = parseFloat(lat);
+      const cleanLng = parseFloat(lng);
+
+      return !isNaN(cleanLat) && !isNaN(cleanLng) ? { lat: cleanLat, lng: cleanLng } : null;
+    })
+    .filter(Boolean); // Remove invalid entries
+
+  if (cleanedWaypoints.length === 0) {
+    return res.status(400).json({ error: 'No valid waypoints after processing.' });
+  }
+
+  // Format the CSV data
+  let csvContent = 'Index,Latitude,Longitude\n';
+  cleanedWaypoints.forEach((point, index) => {
     csvContent += `${index + 1},${point.lat},${point.lng}\n`;
   });
 

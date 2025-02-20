@@ -40,7 +40,7 @@ function MapPage() {
   // Clear the sensor CSV file on the server (if needed)
   const handleClearCsv = async () => {
     try {
-      const response = await axios.post(`${BASE_URL}/clear_location_csv`);
+      const response = await axios.post(`${BASE_URL}/clear_waypoints_csv`);
       alert(response.data);
     } catch (error) {
       console.error('Error clearing CSV:', error);

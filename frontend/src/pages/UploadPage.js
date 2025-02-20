@@ -6,61 +6,66 @@ import { Link } from 'react-router-dom';
 const BASE_URL = 'http://localhost:4000';
 
 function UploadPage() {
-  const [coordinates, setCoordinates] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
-  // Parse a CSV file input
+  // Parse and upload a CSV file input
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const text = event.target.result;
-      // Split lines, ignoring empty lines
       const lines = text.split('\n').filter((line) => line.trim() !== '');
-      const coords = lines.map((line) => {
+      const waypoints = lines.map((line) => {
         const [latStr, lngStr] = line.split(',').map((part) => part.trim());
         return {
           lat: parseFloat(latStr),
           lng: parseFloat(lngStr),
         };
       });
-      setCoordinates(coords);
+
+      if (waypoints.length > 0) {
+        setIsUploading(true);
+        try {
+          await axios.post(`${BASE_URL}/uploadWaypoints`, { waypoints });
+          alert('Waypoints uploaded successfully.');
+        } catch (error) {
+          console.error('Error uploading waypoints:', error);
+          alert('Failed to upload waypoints.');
+        } finally {
+          setIsUploading(false);
+        }
+      }
     };
     reader.readAsText(file);
   };
 
-  // Clear CSV file on server
+  // Clear waypoints on server
   const handleClearCsv = async () => {
+    setIsClearing(true);
     try {
-      const response = await axios.post(`${BASE_URL}/clear_location_csv`);
-      alert(response.data); // e.g. 'File cleared successfully.'
+      const response = await axios.post(`${BASE_URL}/clear_waypoints_csv`);
+      alert(response.data); // e.g., 'Waypoints cleared successfully.'
     } catch (error) {
-      console.error('Error clearing CSV:', error);
-      alert('Failed to clear CSV');
+      console.error('Error clearing waypoints:', error);
+      alert('Failed to clear waypoints.');
+    } finally {
+      setIsClearing(false);
     }
   };
 
   return (
     <div style={{ margin: '20px' }}>
       <h2>Upload Coordinates File</h2>
-      <input type="file" accept=".csv" onChange={handleFileUpload} style={{ marginRight: '10px' }} />
-      <Link to="/">
+      <input type="file" accept=".csv" onChange={handleFileUpload} disabled={isUploading} style={{ marginRight: '10px' }} />
+      <button onClick={handleClearCsv} disabled={isClearing}>
+        {isClearing ? 'Clearing...' : 'Clear Waypoints'}
+      </button>
+      <Link to="/" style={{ marginLeft: '10px' }}>
         <button>Back</button>
       </Link>
-
-      <div style={{ marginTop: '1rem' }}>
-        <h3>Loaded Coordinates</h3>
-        {coordinates.length > 0 ? (
-          <ul>
-            {coordinates.map((coord, idx) => (
-              <li key={idx}>Lat: {coord.lat}, Lng: {coord.lng}</li>
-            ))}
-          </ul>
-        ) : (
-          <p>No coordinates loaded.</p>
-        )}
-      </div>
     </div>
   );
 }

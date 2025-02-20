@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import UploadPage from './pages/UploadPage';
 import MapPage from './pages/MapPage';
+import Manual from './pages/Manual';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/map" element={<MapPage />} />
+        <Route path="/manual" element={<Manual />} />
       </Routes>
     </Router>
   );
