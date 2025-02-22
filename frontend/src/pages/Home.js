@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
-const BASE_URL = 'http://localhost:4000';
+const BASE_URL = process.env.REACT_APP_BASE_URL;
 
 const mapCenter = { lat: 41.55, lng: -71.4 };
 
