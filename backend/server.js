@@ -1,5 +1,5 @@
 require('dotenv').config(); // Load environment variables, e.g. GOOGLE_MAPS_API_KEY, BASE_URL
-const BASE_URL = process.env.REACT_APP_BASE_URL;
+const BASE_URL = process.env.REACT_APP_RPI;
 
 const express = require('express');
 const http = require('http');
