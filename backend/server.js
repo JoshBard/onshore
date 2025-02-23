@@ -1,4 +1,5 @@
-require('dotenv').config(); // Load environment variables, e.g. GOOGLE_MAPS_API_KEY
+require('dotenv').config(); // Load environment variables, e.g. GOOGLE_MAPS_API_KEY, BASE_URL
+const BASE_URL = process.env.REACT_APP_BASE_URL;
 
 const express = require('express');
 const http = require('http');
@@ -10,7 +11,7 @@ const cors = require('cors');
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
-    cors: { origin: "http://localhost:3000", methods: ["GET", "POST"] }
+    cors: { origin: `${BASE_URL}:3000`, methods: ["GET", "POST"] }
 });
 const PORT = 4000; // or your preferred port
 
@@ -20,7 +21,7 @@ app.use(express.json());
 
 // Path to the CSV file
 const locationFilePath = path.join(__dirname, 'location_data', 'live_location.csv');
-const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv')
+const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
 const manualControlFilePath = path.join(__dirname, 'manualcontrol', 'input.txt');
 
 /**
@@ -64,7 +65,6 @@ app.get('/download_location', (req, res) => {
     res.status(404).send('File not found.');
   }
 });
-
 
 app.get('/download_waypoints', (req, res) => {
   if (fs.existsSync(waypointsFilePath)) {
@@ -169,7 +169,6 @@ app.post('/uploadWaypoints', (req, res) => {
     .map(({ lat, lng }) => {
       const cleanLat = parseFloat(lat);
       const cleanLng = parseFloat(lng);
-
       return !isNaN(cleanLat) && !isNaN(cleanLng) ? { lat: cleanLat, lng: cleanLng } : null;
     })
     .filter(Boolean); // Remove invalid entries
@@ -198,6 +197,6 @@ app.post('/uploadWaypoints', (req, res) => {
  * Start the server
  */
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on ${BASE_URL}:${PORT}`);
 });
-// For Raspberry Pi AP: console.log(`Server is running on http://192.168.4.1:${PORT}`);
+// For Raspberry Pi AP: console.log(`Server is running on ${BASE_URL}:${PORT}`);
