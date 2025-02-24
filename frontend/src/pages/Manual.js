@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:4000'); // WebSocket connection to backend
+// Adjust BASE_URL if needed
+const BASE_URL = process.env.REACT_APP_RPI;
+const socket = io(`${BASE_URL}`); // WebSocket connection to backend
 
 const App = () => {
     useEffect(() => {
