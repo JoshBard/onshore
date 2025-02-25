@@ -7,6 +7,7 @@ const socketIo = require('socket.io');
 const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
+const { spawn } = require('child_process');
 
 const app = express();
 const server = http.createServer(app);
@@ -22,7 +23,7 @@ app.use(express.json());
 // Path to the CSV file
 const locationFilePath = path.join(__dirname, 'location_data', 'live_location.csv');
 const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
-const manualControlFilePath = path.join(__dirname, 'manualcontrol', 'input.txt');
+const manualControlFilePath = path.join(__dirname, 'manualcontrol', 'manual_control_meshtastic.py');
 
 /**
  * Only socket connection, used for WASD
@@ -32,7 +33,24 @@ io.on('connection', (socket) => {
 
   socket.on('keypress', (command) => {
       console.log(`Received command: ${command}`);
-      fs.writeFileSync(manualControlFilePath, command, 'utf8'); // Save latest keypress
+
+      // Spawn the Python script and pass the command as an argument
+      const pythonProcess = spawn('python3', [manualControlFilePath, command]);
+
+      // Handle stdout (output from the Python script)
+      pythonProcess.stdout.on('data', (data) => {
+          console.log(`Python Output: ${data}`);
+      });
+
+      // Handle stderr (errors from the Python script)
+      pythonProcess.stderr.on('data', (data) => {
+          console.error(`Python Error: ${data}`);
+      });
+
+      // Handle process exit
+      pythonProcess.on('close', (code) => {
+          console.log(`Python script exited with code ${code}`);
+      });
   });
 
   socket.on('disconnect', () => {
