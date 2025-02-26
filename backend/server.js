@@ -23,7 +23,7 @@ app.use(express.json());
 // Path to the CSV file
 const locationFilePath = path.join(__dirname, 'location_data', 'live_location.csv');
 const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
-const manualControlFilePath = path.join(__dirname, 'manualcontrol', 'manual_control_meshtastic.py');
+const manualControlFilePath = path.join(__dirname, 'manualcontrol', 'manual_send.sh');
 
 /**
  * Only socket connection, used for WASD
@@ -32,29 +32,29 @@ io.on('connection', (socket) => {
   console.log('Client connected (WebSockets)');
 
   socket.on('keypress', (command) => {
-      console.log(`Received command: ${command}`);
+    console.log(`Received command: ${command}`);
 
-      // Spawn the Python script and pass the command as an argument
-      const pythonProcess = spawn('python3', [manualControlFilePath, command]);
+    // Spawn the shell script and pass the command as an argument
+    const shellProcess = spawn('./send_meshtastic_message.sh', [command]);
 
-      // Handle stdout (output from the Python script)
-      pythonProcess.stdout.on('data', (data) => {
-          console.log(`Python Output: ${data}`);
-      });
+    // Handle stdout (output from the shell script)
+    shellProcess.stdout.on('data', (data) => {
+        console.log(`Shell Output: ${data}`);
+    });
 
-      // Handle stderr (errors from the Python script)
-      pythonProcess.stderr.on('data', (data) => {
-          console.error(`Python Error: ${data}`);
-      });
+    // Handle stderr (errors from the shell script)
+    shellProcess.stderr.on('data', (data) => {
+        console.error(`Shell Error: ${data}`);
+    });
 
-      // Handle process exit
-      pythonProcess.on('close', (code) => {
-          console.log(`Python script exited with code ${code}`);
-      });
+    // Handle process exit
+    shellProcess.on('close', (code) => {
+        console.log(`Shell script exited with code ${code}`);
+    });
   });
 
   socket.on('disconnect', () => {
-      console.log('Client disconnected');
+    console.log('Client disconnected');
   });
 });
 
