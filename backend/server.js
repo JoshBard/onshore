@@ -32,7 +32,7 @@ io.on('connection', (socket) => {
   console.log('Client connected (WebSockets)');
 
   socket.on('keypress', (command) => {
-    console.log(`Received command: ${command}`);
+    console.log(`Received command to send: ${command}`);
 
     // Spawn the shell script and pass the command as an argument
     const shellProcess = spawn(manualControlFilePath, [command]);
