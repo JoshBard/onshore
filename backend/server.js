@@ -35,7 +35,7 @@ io.on('connection', (socket) => {
     console.log(`Received command: ${command}`);
 
     // Spawn the shell script and pass the command as an argument
-    const shellProcess = spawn('./send_meshtastic_message.sh', [command]);
+    const shellProcess = spawn(manualControlFilePath, [command]);
 
     // Handle stdout (output from the shell script)
     shellProcess.stdout.on('data', (data) => {
