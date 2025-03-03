@@ -1,19 +1,18 @@
 #!/bin/bash
 
-# Check if a message argument was provided
+LOG_FILE="manual_logs.log"
+DEST_NODE="!eb15a9fe"  # Destination Node ID
+PREFIX="MANUAL_COMMAND_"
+
 if [ -z "$1" ]; then
     echo "No command provided"
     exit 1
 fi
 
-# Define the message prefix
-PREFIX="MANUAL_COMMAND_"
-
-# Construct the final message
 FINAL_MESSAGE="${PREFIX}$1"
 
-# Send the message using the Meshtastic CLI
-meshtastic --sendpacket "$FINAL_MESSAGE"
+# Send the message with destination
+meshtastic --sendtext "$FINAL_MESSAGE" --dest "$DEST_NODE"
 
-# Print confirmation
-echo "Sent via Meshtastic: $FINAL_MESSAGE"
+# Log the message
+echo "Sent via Meshtastic to $DEST_NODE: $FINAL_MESSAGE" | tee -a "$LOG_FILE"
