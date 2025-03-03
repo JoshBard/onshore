@@ -13,7 +13,7 @@ PREFIX="MANUAL_COMMAND_"
 FINAL_MESSAGE="${PREFIX}$1"
 
 # Send the message using the Meshtastic CLI
-meshtastic --sendtext "$FINAL_MESSAGE"
+meshtastic --sendpacket "$FINAL_MESSAGE"
 
 # Print confirmation
 echo "Sent via Meshtastic: $FINAL_MESSAGE"
