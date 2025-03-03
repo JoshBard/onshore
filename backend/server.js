@@ -23,7 +23,8 @@ app.use(express.json());
 // Path to the CSV file
 const locationFilePath = path.join(__dirname, 'location_data', 'live_location.csv');
 const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
-const manualControlFilePath = path.join(__dirname, 'manualcontrol', 'manual_send.sh');
+const waypointsSendPath = path.join(__dirname, 'waypoints', 'waypoints_send.sh')
+const manualControlSendPath = path.join(__dirname, 'manualcontrol', 'manual_send.sh');
 
 /**
  * Only socket connection, used for WASD
@@ -35,7 +36,7 @@ io.on('connection', (socket) => {
     console.log(`Received command to send: ${command}`);
 
     // Spawn the shell script and pass the command as an argument
-    const shellProcess = spawn(manualControlFilePath, [command]);
+    const shellProcess = spawn(manualControlSendPath, [command]);
 
     // Handle stdout (output from the shell script)
     shellProcess.stdout.on('data', (data) => {
@@ -208,6 +209,25 @@ app.post('/uploadWaypoints', (req, res) => {
       return res.status(500).json({ error: 'Failed to upload waypoints.' });
     }
     res.json({ message: 'Waypoints uploaded successfully.', file: 'waypoints.csv' });
+  });
+});
+
+/**
+ * 6) Transmit waypoints to onshore
+ */
+app.post('/sendWaypoints', (req, res) => {
+  spawn(waypointsSendPath, (error, stdout, stderr) => {
+      if (error) {
+          console.error(`Error executing script: ${error.message}`);
+          return res.status(500).json({ success: false, error: error.message });
+      }
+      if (stderr) {
+          console.error(`Script error output: ${stderr}`);
+          return res.status(500).json({ success: false, error: stderr });
+      }
+
+      console.log(`Script output: ${stdout}`);
+      res.json({ success: true, message: 'Waypoints sent successfully.', output: stdout });
   });
 });
 
