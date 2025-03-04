@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define a unique private channel key (must be the same for both radios)
-PRIVATE_CHANNEL_KEY="WAVES2025"
+PRIVATE_CHANNEL_KEY="SIxCfBPJOgEx42/zjYsLIw=="
 CHANNEL_NAME="WAVESchannel"
 CHANNEL_INDEX=0  # Default primary channel index
 
