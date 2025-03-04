@@ -1,7 +1,6 @@
 #!/bin/bash
 
 LOG_FILE="manual_logs.log"
-DEST_NODE="!eb15a9fe"  # Destination Node ID
 PREFIX="MANUAL_COMMAND_"
 
 if [ -z "$1" ]; then
@@ -11,8 +10,8 @@ fi
 
 FINAL_MESSAGE="${PREFIX}$1"
 
-# Send the message with destination
-meshtastic --sendtext "$FINAL_MESSAGE" --dest "$DEST_NODE"
+# Send the message as a broadcast (no --dest)
+meshtastic --sendtext "$FINAL_MESSAGE"
 
 # Log the message
-echo "Sent via Meshtastic to $DEST_NODE: $FINAL_MESSAGE" | tee -a "$LOG_FILE"
+echo "Broadcasted via Meshtastic: $FINAL_MESSAGE" | tee -a "$LOG_FILE"
