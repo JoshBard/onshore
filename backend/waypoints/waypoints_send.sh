@@ -31,7 +31,7 @@ for file in ${CHUNK_PREFIX}*; do
     FORMATTED_MESSAGE="WAYPOINTS_CHUNK_${CHUNK_COUNT}:$CHUNK_CONTENT"
 
     echo "Sending chunk $CHUNK_COUNT..."
-    meshtastic --sendtext "$FORMATTED_MESSAGE" --dest "$DEST_NODE"
+    meshtastic --ch-index 5 --sendtext "$FORMATTED_MESSAGE" --dest "$DEST_NODE"
 
     # Log the message
     echo "Sent chunk $CHUNK_COUNT to $DEST_NODE: $FORMATTED_MESSAGE" | tee -a "$LOG_FILE"
