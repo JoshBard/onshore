@@ -6,13 +6,7 @@ CHUNK_SIZE=200
 CSV_FILE="waypoints.csv"
 ENCODED_FILE="encoded_waypoints.txt"
 CHUNK_PREFIX="chunk_"
-MESH_FIFO="/tmp/mesh_fifo"
-
-# Ensure the named pipe (FIFO) exists
-if [ ! -p "$MESH_FIFO" ]; then
-    echo "ERROR: Named pipe $MESH_FIFO not found. Run 'mkfifo /tmp/mesh_fifo' and pipe meshtastic output into it."
-    exit 1
-fi
+SOURCE_ID="0xeb767ddf"  # Sender ID of receiver (used to detect ACKs)
 
 # Ensure CSV file exists
 if [ ! -f "$CSV_FILE" ]; then
@@ -31,9 +25,6 @@ CHUNK_FILES=( ${CHUNK_PREFIX}* )
 CHUNK_COUNT=${#CHUNK_FILES[@]}
 CURRENT_CHUNK=1
 
-# Open the FIFO for reading in background
-exec 3<"$MESH_FIFO"
-
 echo "Sending $CHUNK_COUNT chunks..."
 
 for file in "${CHUNK_FILES[@]}"; do
@@ -45,7 +36,7 @@ for file in "${CHUNK_FILES[@]}"; do
     meshtastic --ch-index 5 --sendtext "$MSG" --dest "$DEST_NODE"
     echo "Sent: $MSG" >> "$LOG_FILE"
 
-    # Wait for the corresponding ACK: "WAYPOINTS_ACK_<CURRENT_CHUNK>"
+    # Wait for the corresponding ACK in `journalctl`
     ACK="WAYPOINTS_ACK_${CURRENT_CHUNK}"
     echo "Waiting for ACK: $ACK"
 
@@ -54,13 +45,14 @@ for file in "${CHUNK_FILES[@]}"; do
     END_TIME=$(( $(date +%s) + TIMEOUT_SECONDS ))
 
     while [ $(date +%s) -lt $END_TIME ]; do
-        if read -t 2 -u 3 line; then
-            if [[ "$line" == *"$ACK"* ]]; then
-                echo "ACK for chunk $CURRENT_CHUNK received!"
-                ACK_RECEIVED=1
-                break
-            fi
+        # Check the latest logs for an ACK from the receiver
+        if journalctl -u meshtasticd -o cat --no-pager --since "2 seconds ago" | grep "Received text msg from=$SOURCE_ID" | grep -q "$ACK"; then
+            echo "ACK for chunk $CURRENT_CHUNK received!"
+            ACK_RECEIVED=1
+            break
         fi
+
+        sleep 2  # Avoid excessive polling
     done
 
     if [ $ACK_RECEIVED -eq 0 ]; then
