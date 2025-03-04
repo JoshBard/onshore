@@ -1,16 +1,15 @@
 #!/bin/bash
 
 # Define a unique private channel key (must be the same for both radios)
-PRIVATE_CHANNEL_KEY="SIxCfBPJOgEx42/zjYsLIw=="
+PRIVATE_CHANNEL_KEY="0x223addd2157262ef8273d40c1c986e1f053905eaadf05379da3d6b4583d3a77e"
 CHANNEL_NAME="WAVESchannel"
-CHANNEL_INDEX=0  # Default primary channel index
+CHANNEL_INDEX=5  # Default primary channel index
 
 echo "Configuring Meshtastic Radios for Direct Communication..."
 
 # 1. Apply Private Channel (Ensuring byte format for PSK)
-DECODED_PSK=$(echo "$PRIVATE_CHANNEL_KEY" | base64 -d | xxd -p -c256)
-meshtastic --ch-set psk 0x223addd2157262ef8273d40c1c986e1f053905eaadf05379da3d6b4583d3a77e --ch-index "$CHANNEL_INDEX" --host localhost
-meshtastic --ch-set name "$CHANNEL_NAME" --ch-index "$CHANNEL_INDEX" --host localhost
+# meshtastic --ch-set name "$CHANNEL_NAME" --ch-index "$CHANNEL_INDEX" --host localhost
+meshtastic --ch-set psk $PRIVATE_CHANNEL_KEY --ch-index "$CHANNEL_INDEX" --host localhost
 
 # 2. Disable Mesh Networking Features (Fixed Attribute Name)
 meshtastic --set device.rebroadcast_mode NONE --host localhost
