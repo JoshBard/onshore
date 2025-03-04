@@ -1,7 +1,6 @@
 #!/bin/bash
 
 LOG_FILE="send_logs.log"
-DEST_NODE="!eb15a9fe"
 CHUNK_SIZE=200
 CSV_FILE="waypoints.csv"
 ENCODED_FILE="encoded_waypoints.txt"
@@ -31,9 +30,9 @@ for file in "${CHUNK_FILES[@]}"; do
     CHUNK_CONTENT=$(cat "$file")
     MSG="WAYPOINTS${CURRENT_CHUNK}:$CHUNK_CONTENT"
 
-    # Send the chunk
+    # Send the chunk (broadcast to all nodes)
     echo "[$(date)] Sending chunk $CURRENT_CHUNK..."
-    meshtastic --ch-index 5 --sendtext "$MSG" --dest "$DEST_NODE"
+    meshtastic --ch-index 5 --sendtext "$MSG"
     echo "Sent: $MSG" >> "$LOG_FILE"
 
     # Wait for the corresponding ACK in `journalctl`
@@ -41,18 +40,18 @@ for file in "${CHUNK_FILES[@]}"; do
     echo "Waiting for ACK: $ACK"
 
     ACK_RECEIVED=0
-    TIMEOUT_SECONDS=30
+    TIMEOUT_SECONDS=180  # ⏳ Increased timeout to 3 minutes (180 seconds)
     END_TIME=$(( $(date +%s) + TIMEOUT_SECONDS ))
 
     while [ $(date +%s) -lt $END_TIME ]; do
-        # Check the latest logs for an ACK from the receiver
-        if journalctl -u meshtasticd -o cat --no-pager --since "2 seconds ago" | grep "Received text msg from=$SOURCE_ID" | grep -q "$ACK"; then
+        # Check the latest logs for an ACK from any node
+        if journalctl -u meshtasticd -o cat --no-pager --since "5 seconds ago" | grep "Received text msg" | grep -q "$ACK"; then
             echo "ACK for chunk $CURRENT_CHUNK received!"
             ACK_RECEIVED=1
             break
         fi
 
-        sleep 2  # Avoid excessive polling
+        sleep 5  # Slow polling to reduce log reads (every 5 seconds)
     done
 
     if [ $ACK_RECEIVED -eq 0 ]; then
@@ -66,7 +65,7 @@ done
 # Send "WAYPOINTS_FINISHED"
 FINISHED_MSG="WAYPOINTS_FINISHED"
 echo "[$(date)] Sending FINISHED signal..."
-meshtastic --ch-index 5 --sendtext "$FINISHED_MSG" --dest "$DEST_NODE"
+meshtastic --ch-index 5 --sendtext "$FINISHED_MSG"
 echo "Sent: $FINISHED_MSG" >> "$LOG_FILE"
 
 echo "All chunks sent and ACKed. Finished."
