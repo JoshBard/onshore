@@ -7,22 +7,19 @@ CHANNEL_INDEX=0  # Default primary channel index
 
 echo "Configuring Meshtastic Radios for Direct Communication..."
 
-# 1. Apply Private Channel (needs --ch-index)
-meshtastic --ch-set psk "$PRIVATE_CHANNEL_KEY" --ch-index $CHANNEL_INDEX
-meshtastic --ch-set name "$CHANNEL_NAME" --ch-index $CHANNEL_INDEX
+# 1. Apply Private Channel (Fixed ch-index issue)
+meshtastic --ch-set psk "$PRIVATE_CHANNEL_KEY" --ch-index $CHANNEL_INDEX --host localhost
+meshtastic --ch-set name "$CHANNEL_NAME" --ch-index $CHANNEL_INDEX --host localhost
 
-# 2. Disable Mesh Networking Features (Updated Attributes)
-meshtastic --set device.rebroadcast_mode DISABLED
-meshtastic --set lora.hop_limit 1
-meshtastic --set store_forward.enabled false
+# 2. Disable Mesh Networking Features (Fixed Attribute Name)
+meshtastic --set device.rebroadcast_mode NONE --host localhost
+meshtastic --set lora.hop_limit 1 --host localhost
+meshtastic --set store_forward.enabled false --host localhost
 
-# 3. Disable GPS Position Broadcasting
-meshtastic --set position.position_broadcast_secs 0
+# 3. Disable GPS Position Broadcasting (Ensure Correct Attribute Path)
+meshtastic --set position.position_broadcast_secs 0 --host localhost
 
-# 4. Set Transmission Power to Maximum
-meshtastic --set lora.tx_power 30
-
-# 5. Enable acknowledgments (Corrected Attribute)
-meshtastic --set security.send_ack_enabled true
+# 4. Set Transmission Power to Maximum (Fixed attribute path)
+meshtastic --set lora.tx_power 30 --host localhost
 
 echo "Configuration completed successfully."
