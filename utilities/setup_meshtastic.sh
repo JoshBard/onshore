@@ -9,7 +9,7 @@ echo "Configuring Meshtastic Radios for Direct Communication..."
 
 # 1. Apply Private Channel (Ensuring byte format for PSK)
 DECODED_PSK=$(echo "$PRIVATE_CHANNEL_KEY" | base64 -d | xxd -p -c256)
-meshtastic --ch-set psk "$DECODED_PSK" --ch-index "$CHANNEL_INDEX" --host localhost
+meshtastic --ch-set psk 0x223addd2157262ef8273d40c1c986e1f053905eaadf05379da3d6b4583d3a77e --ch-index "$CHANNEL_INDEX" --host localhost
 meshtastic --ch-set name "$CHANNEL_NAME" --ch-index "$CHANNEL_INDEX" --host localhost
 
 # 2. Disable Mesh Networking Features (Fixed Attribute Name)
