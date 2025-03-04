@@ -11,7 +11,7 @@ fi
 FINAL_MESSAGE="${PREFIX}$1"
 
 # Send the message as a broadcast (no --dest)
-meshtastic --sendtext "$FINAL_MESSAGE"
+meshtastic --ch-index 5 --sendtext "$FINAL_MESSAGE"
 
 # Log the message
 echo "Broadcasted via Meshtastic: $FINAL_MESSAGE" | tee -a "$LOG_FILE"
