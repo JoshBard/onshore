@@ -8,8 +8,8 @@ CHANNEL_INDEX=0  # Default primary channel index
 echo "Configuring Meshtastic Radios for Direct Communication..."
 
 # 1. Apply Private Channel (Fixed ch-index issue)
-meshtastic --ch-set psk "$PRIVATE_CHANNEL_KEY" --ch-index $CHANNEL_INDEX --host localhost
-meshtastic --ch-set name "$CHANNEL_NAME" --ch-index $CHANNEL_INDEX --host localhost
+meshtastic --ch-set psk "$(echo "$PRIVATE_CHANNEL_KEY" | base64 --decode)" --ch-index "$CHANNEL_INDEX" --host localhost
+meshtastic --ch-set name "$CHANNEL_NAME" --ch-index "$CHANNEL_INDEX" --host localhost
 
 # 2. Disable Mesh Networking Features (Fixed Attribute Name)
 meshtastic --set device.rebroadcast_mode NONE --host localhost
