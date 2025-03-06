@@ -23,8 +23,7 @@ app.use(express.json());
 // Path to the CSV file
 const locationFilePath = path.join(__dirname, 'location_data', 'live_location.csv');
 const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
-const waypointsSendPath = path.join(__dirname, 'waypoints', 'waypoints_send.sh')
-const manualControlSendPath = path.join(__dirname, 'manualcontrol', 'manual_send.sh');
+const transmitPath = path.join(__dirname, 'messaging', 'transmit.sh');
 
 /**
  * Only socket connection, used for WASD
@@ -36,7 +35,7 @@ io.on('connection', (socket) => {
     console.log(`Received command to send: ${command}`);
 
     // Spawn the shell script and pass the command as an argument
-    const shellProcess = spawn(manualControlSendPath, [command]);
+    const shellProcess = spawn(transmitPath, ['MAN', command]);
 
     // Handle stdout (output from the shell script)
     shellProcess.stdout.on('data', (data) => {
@@ -216,19 +215,28 @@ app.post('/uploadWaypoints', (req, res) => {
  * 6) Transmit waypoints to onshore
  */
 app.post('/sendWaypoints', (req, res) => {
-  spawn(waypointsSendPath, (error, stdout, stderr) => {
-      if (error) {
-          console.error(`Error executing script: ${error.message}`);
-          return res.status(500).json({ success: false, error: error.message });
-      }
-      if (stderr) {
-          console.error(`Script error output: ${stderr}`);
-          return res.status(500).json({ success: false, error: stderr });
-      }
+    const process = spawn(transmitPath, ['WP']);
 
-      console.log(`Script output: ${stdout}`);
-      res.json({ success: true, message: 'Waypoints sent successfully.', output: stdout });
-  });
+    let outputData = '';
+    let errorData = '';
+
+    process.stdout.on('data', (data) => {
+        outputData += data.toString();
+    });
+
+    process.stderr.on('data', (data) => {
+        errorData += data.toString();
+    });
+
+    process.on('close', (code) => {
+        if (code !== 0) {
+            console.error(`Script exited with code ${code}: ${errorData}`);
+            return res.status(500).json({ success: false, error: errorData });
+        }
+
+        console.log(`Script output: ${outputData}`);
+        res.json({ success: true, message: 'Waypoints sent successfully.', output: outputData });
+    });
 });
 
 /**
