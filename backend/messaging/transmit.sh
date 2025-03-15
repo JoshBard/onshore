@@ -26,6 +26,9 @@ case "$MESSAGE_TYPE" in
     MAN)
         "$SCRIPT_DIR/send_scripts/send_manual.sh" "$2"
         ;;
+    MSSN)
+        "$SCRIPT_DIR/send_scripts/send_mission.sh" "$2"
+        ;;
     *)
         log_message "FAILED" "$MESSAGE_TYPE" "Invalid message type."
         exit 1

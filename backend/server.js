@@ -1,5 +1,5 @@
 require('dotenv').config(); // Load environment variables, e.g. GOOGLE_MAPS_API_KEY, BASE_URL
-const BASE_URL = process.env.REACT_APP_RPI;
+const BASE_URL = process.env.REACT_APP_TEST;
 
 const express = require('express');
 const http = require('http');
@@ -237,6 +237,60 @@ app.post('/sendWaypoints', (req, res) => {
         console.log(`Script output: ${outputData}`);
         res.json({ success: true, message: 'Waypoints sent successfully.', output: outputData });
     });
+});
+
+/**
+ * 7) Start and stop manual mode
+ */
+app.post('/start_manual', (req, res) => {
+  const process = spawn(transmitPath, ['MAN', 'START']);
+
+  process.on('close', (code) => {
+      if (code !== 0) {
+          console.error(`Error starting manual mode, exit code: ${code}`);
+          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
+      }
+      res.json({ success: true, message: 'Manual mode started' });
+  });
+});
+
+app.post('/stop_manual', (req, res) => {
+  const process = spawn(transmitPath, ['MAN', 'STOP']);
+
+  process.on('close', (code) => {
+      if (code !== 0) {
+          console.error(`Error stopping manual mode, exit code: ${code}`);
+          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
+      }
+      res.json({ success: true, message: 'Manual mode stopped' });
+  });
+});
+
+/**
+ * 8) start and stop the mission 
+ */
+app.post('/start_mission', (req, res) => {
+  const process = spawn(transmitPath, ['MSSN', 'START']);
+
+  process.on('close', (code) => {
+      if (code !== 0) {
+          console.error(`Error starting mission, exit code: ${code}`);
+          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
+      }
+      res.json({ success: true, message: 'Mission started' });
+  });
+});
+
+app.post('/stop_manual', (req, res) => {
+  const process = spawn(transmitPath, ['MSSN', 'STOP']);
+
+  process.on('close', (code) => {
+      if (code !== 0) {
+          console.error(`Error stopping mission, exit code: ${code}`);
+          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
+      }
+      res.json({ success: true, message: 'Mission stopped' });
+  });
 });
 
 /**
