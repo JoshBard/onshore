@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
-const BASE_URL = process.env.REACT_APP_RPI;
+const BASE_URL = process.env.REACT_APP_TEST;
 
 const mapCenter = { lat: 41.55, lng: -71.4 };
 
@@ -15,6 +15,7 @@ const mapContainerStyle = {
 function Home() {
   const [mapKey, setMapKey] = useState(null);
   const [points, setPoints] = useState([]);
+  const [missionStatus, setMissionStatus] = useState(null); // Track mission state
 
   useEffect(() => {
     const fetchMapKey = async () => {
@@ -59,6 +60,26 @@ function Home() {
       console.log('CSV cleared');
     } catch (error) {
       console.error('Error clearing CSV:', error);
+    }
+  };
+
+  const handleStartMission = async () => {
+    try {
+      await axios.post(`${BASE_URL}/start_mission`);
+      setMissionStatus('running');
+      console.log('Mission started');
+    } catch (error) {
+      console.error('Error starting mission:', error);
+    }
+  };
+
+  const handleStopMission = async () => {
+    try {
+      await axios.post(`${BASE_URL}/stop_mission`);
+      setMissionStatus('stopped');
+      console.log('Mission stopped');
+    } catch (error) {
+      console.error('Error stopping mission:', error);
     }
   };
 
@@ -118,6 +139,16 @@ function Home() {
           </a>
           <button onClick={handleClearCsv} style={{ marginLeft: '10px' }}>
             Clear Location CSV
+          </button>
+        </div>
+
+        {/* Mission Control Buttons */}
+        <div style={{ marginTop: '2rem' }}>
+          <button onClick={handleStartMission} style={{ marginRight: '10px', backgroundColor: 'green', color: 'white' }}>
+            Start Mission
+          </button>
+          <button onClick={handleStopMission} style={{ backgroundColor: 'red', color: 'white' }}>
+            Stop Mission
           </button>
         </div>
       </div>
