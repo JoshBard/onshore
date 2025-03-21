@@ -131,6 +131,10 @@ def read_buffer(offset, length):
     return execute_cmd(CMD_READ_BUFFER, bytes([offset, 0x00]), read_len=length)
 
 def lora_init_tx():
+    # Put the SX1262 to sleep first to reset internal state
+    execute_cmd(CMD_SET_SLEEP, b'\x00')  # Cold start
+    time.sleep(0.01)
+
     set_standby(STDBY_RC)
     time.sleep(0.01)
 
