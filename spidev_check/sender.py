@@ -164,12 +164,17 @@ def send_packet(payload):
     execute_cmd(CMD_SET_TX, bytes(buf))
 
     # Poll for TxDone (bit 0)
-    while True:
+    timeout = time.time() + 5  # 5 second timeout
+    while time.time() < timeout:
         irq = get_irq_status()
-        if irq & 0x0001:  # TxDone is bit0
+        if irq & 0x0001:  # TxDone
+            print("TX Done!")
             clear_irq()
-            break
+            return
         time.sleep(0.01)
+
+    print("TX timed out. No TxDone IRQ received.")
+
 
 def main():
     # Open spidev0.0
