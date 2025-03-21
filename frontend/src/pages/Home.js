@@ -1,35 +1,36 @@
 import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 
 const BASE_URL = process.env.REACT_APP_TEST;
-
-const mapCenter = { lat: 41.55, lng: -71.4 };
+const mapCenter = [41.55, -71.4];
 
 const mapContainerStyle = {
   width: '100%',
   height: '600px',
 };
 
+// Custom marker icons
+const redIcon = new L.Icon({
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
+const greenIcon = new L.Icon({
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
 function Home() {
-  const [mapKey, setMapKey] = useState(null);
   const [points, setPoints] = useState([]);
-  const [missionStatus, setMissionStatus] = useState(null); // Track mission state
-
-  useEffect(() => {
-    const fetchMapKey = async () => {
-      try {
-        const keyResponse = await axios.get(`${BASE_URL}/api/mapkey`);
-        setMapKey(keyResponse.data.key);
-        console.log("Google Maps API Key Loaded.");
-      } catch (error) {
-        console.error('Error fetching Google Maps API key:', error);
-      }
-    };
-
-    fetchMapKey();
-  }, []);
+  const [missionStatus, setMissionStatus] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -46,10 +47,7 @@ function Home() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(() => {
-      fetchData();
-    }, 5000);
-
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -83,55 +81,29 @@ function Home() {
     }
   };
 
-  const renderMarkers = () => {
-    if (!points || points.length === 0) return null;
-
-    return points.map((pt, idx) => {
-      if (!pt.lat || !pt.lng) {
-        console.warn("Skipping invalid waypoint:", pt);
-        return null;
-      }
-      return (
-        <Marker
-          key={idx}
-          position={{ lat: Number(pt.lat), lng: Number(pt.lng) }}
-          icon={{
-            url: idx === points.length - 1 
-              ? 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
-              : 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
-          }}
-        />
-      );
-    });
-  };
-
-  if (!mapKey) {
-    return (
-      <div style={{ margin: '20px' }}>
-        <h1>Home</h1>
-        <p>Loading Google Maps...</p>
-        <Link to="/upload">
-          <button>Go to Upload Page</button>
-        </Link>
-        <Link to="/map" style={{ marginLeft: '10px' }}>
-          <button>Go to Map Page</button>
-        </Link>
-        <Link to="/manual" style={{ marginLeft: '10px' }}>
-          <button>Manual Control Mode</button>
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'row', margin: '20px' }}>
       <div style={{ flex: 2, marginRight: '20px' }}>
         <h1>Location Tracker</h1>
-        <LoadScript googleMapsApiKey={mapKey}>
-          <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={10}>
-            {renderMarkers()}
-          </GoogleMap>
-        </LoadScript>
+
+        <MapContainer center={mapCenter} zoom={1} style={mapContainerStyle}>
+          {/* Tile Layer - Using local tiles from frontend */}
+          <TileLayer url="/map_tiles/{z}/{x}/{y}.png" />
+
+          {/* Render Markers */}
+          {points.map((pt, idx) => (
+            <Marker 
+              key={idx} 
+              position={[pt.lat, pt.lng]} 
+              icon={idx === points.length - 1 ? greenIcon : redIcon}
+            >
+              <Popup>
+                <b>Waypoint {idx + 1}</b> <br />
+                Lat: {pt.lat}, Lng: {pt.lng}
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
 
         <div style={{ marginTop: '2rem' }}>
           <a href={`${BASE_URL}/download_location`} download>
