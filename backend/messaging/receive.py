@@ -4,7 +4,7 @@ from datetime import datetime
 from meshtastic.tcp_interface import TCPInterface
 from pubsub import pub
 import subprocess
-from backend.messaging.receive_scripts.receive_logger import log_message
+from receive_scripts.receive_logger import log_message
 
 # --- Config ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))

@@ -3,7 +3,7 @@ import base64
 import gzip
 import time
 from meshtastic.tcp_interface import TCPInterface
-from backend.messaging.send_scripts.transmit_logger import log_message
+from transmit_logger import log_message
 
 # --- Config ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))

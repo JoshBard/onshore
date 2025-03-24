@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 from datetime import datetime
-from backend.messaging.send_scripts.transmit_logger import log_message
+from send_scripts.transmit_logger import log_message
 
 # --- Config ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
