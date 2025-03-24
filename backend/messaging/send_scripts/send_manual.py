@@ -33,7 +33,7 @@ result = subprocess.run([
 if result.returncode == 0:
     with open(LAST_MANUAL_FILE, "w") as f:
         f.write(final_message)
-    log_message("SUCCESS", "MAN", final_message)
+    log_message("SUCCESS", "MAN", f"{final_message} | {result.stdout.decode()}")
 else:
-    log_message("FAILED", "MAN", f"{final_message} | {error}")
+    log_message("FAILED", "MAN", f"{final_message} | {result.stderr.decode()}")
     sys.exit(1)

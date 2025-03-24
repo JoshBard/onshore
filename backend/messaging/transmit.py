@@ -1,7 +1,6 @@
 import os
 import sys
 import subprocess
-from datetime import datetime
 from send_scripts.transmit_logger import log_message
 
 # --- Config ---
@@ -28,6 +27,7 @@ elif message_type == "MAN":
         log_message("FAILED", "MAN", "No manual command provided.")
         sys.exit(1)
     command = sys.argv[2]
+    print("SEND")
     subprocess.run(["python3", os.path.join(SEND_DIR, "send_manual.py"), command], check=True)
 
 elif message_type == "MSSN":
