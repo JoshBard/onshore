@@ -23,7 +23,7 @@ app.use(express.json());
 // Path to the CSV file
 const locationFilePath = path.join(__dirname, 'location_data', 'live_location.csv');
 const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
-const transmitPath = path.join(__dirname, 'messaging', 'transmit.sh');
+const transmitPath = path.join(__dirname, 'messaging', 'transmit.py');
 
 /**
  * Only socket connection, used for WASD
@@ -212,7 +212,7 @@ app.post('/uploadWaypoints', (req, res) => {
 });
 
 /**
- * 6) Transmit waypoints to onshore
+ * 6) Transmit waypoints to onboard
  */
 app.post('/sendWaypoints', (req, res) => {
     const process = spawn(transmitPath, ['WP']);
@@ -243,7 +243,7 @@ app.post('/sendWaypoints', (req, res) => {
  * 7) Start and stop manual mode
  */
 app.post('/start_manual', (req, res) => {
-  const process = spawn(transmitPath, ['MAN', 'START']);
+  const process = spawn(transmitPath, ['MSSN', 'START_MAN']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -255,7 +255,7 @@ app.post('/start_manual', (req, res) => {
 });
 
 app.post('/stop_manual', (req, res) => {
-  const process = spawn(transmitPath, ['MAN', 'STOP']);
+  const process = spawn(transmitPath, ['MSSN', 'STOP_MAN']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -270,7 +270,7 @@ app.post('/stop_manual', (req, res) => {
  * 8) start and stop the mission 
  */
 app.post('/start_mission', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'START']);
+  const process = spawn(transmitPath, ['MSSN', 'START_MSSN']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -281,8 +281,8 @@ app.post('/start_mission', (req, res) => {
   });
 });
 
-app.post('/stop_manual', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'STOP']);
+app.post('/stop_mission', (req, res) => {
+  const process = spawn(transmitPath, ['MSSN', 'STOP_MSSN']);
 
   process.on('close', (code) => {
       if (code !== 0) {

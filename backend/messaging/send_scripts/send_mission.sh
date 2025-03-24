@@ -9,19 +9,7 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-# Convert input to corresponding message
-case "$1" in
-    "START")
-        MESSAGE_CONTENT="MSSN_START"
-        ;;
-    "STOP")
-        MESSAGE_CONTENT="MSSN_STOP"
-        ;;
-    *)
-        echo "Error: Invalid message input." >> "$LOG_FILE"
-        exit 1
-        ;;
-esac
+MESSAGE_CONTENT="MSSN_$1"
 
 FINAL_MESSAGE="$MESSAGE_CONTENT"
 

@@ -15,6 +15,7 @@ const ManualControl = () => {
                 case 'a': command = 'LEFT'; break;
                 case 's': command = 'BACKWARD'; break;
                 case 'd': command = 'RIGHT'; break;
+                case ' ': command = 'STOP'; break;
                 default: return;
             }
 
