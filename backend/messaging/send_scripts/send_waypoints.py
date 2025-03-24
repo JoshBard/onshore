@@ -3,17 +3,18 @@ import base64
 import gzip
 import time
 from meshtastic.tcp_interface import TCPInterface
+from backend.messaging.send_scripts.transmit_logger import log_message
 
 # --- Config ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 CSV_FILE = os.path.abspath(os.path.join(SCRIPT_DIR, "../../waypoints/waypoints.csv"))
 CHUNK_SIZE = 222
 CHANNEL_INDEX = 5
-ACK_DELAY = 0.5  # seconds between sends
+ACK_DELAY = 0.5
 
 # --- Load and compress the CSV ---
 if not os.path.exists(CSV_FILE):
-    print(f"ERROR: CSV file not found at {CSV_FILE}")
+    log_message("FAILED", "WP", "ERROR: CSV file not found at {CSV_FILE}")
     exit(1)
 
 with open(CSV_FILE, 'rb') as f:
@@ -33,7 +34,7 @@ time.sleep(2)  # Let the connection settle
 # --- Send each chunk with ack ---
 for index, chunk in enumerate(chunks):
     message = f"WP_{index}:{chunk}"
-    print(f"Sending chunk {index + 1}/{total_chunks}")
+    log_message("SUCCESS", "WP", "Sending chunk {index + 1}/{total_chunks}")
     interface.sendText(
         text=message,
         channelIndex=CHANNEL_INDEX,
@@ -43,5 +44,5 @@ for index, chunk in enumerate(chunks):
 
 # --- Send completion message ---
 interface.sendText("WP_FINISHED", channelIndex=CHANNEL_INDEX, wantAck=True)
-print("All chunks sent successfully.")
+log_message("SUCCESS", "WP", "All chunks deliver")
 interface.close()
