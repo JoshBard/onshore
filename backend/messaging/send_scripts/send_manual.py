@@ -5,7 +5,6 @@ from transmit_logger import log_message
 
 # --- Config ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-LAST_MANUAL_FILE = os.path.join(SCRIPT_DIR, "last_manual_message.log")
 CHANNEL_INDEX = "5"
 
 # --- Argument check ---
@@ -15,13 +14,6 @@ if len(sys.argv) != 2:
 
 message_content = sys.argv[1].upper()
 final_message = f"MAN_{message_content}"
-
-# --- Check for duplicate ---
-if os.path.exists(LAST_MANUAL_FILE):
-    with open(LAST_MANUAL_FILE, "r") as f:
-        last_sent = f.read().strip()
-    if last_sent == final_message:
-        sys.exit(0)
 
 # --- Send message via CLI ---
 result = subprocess.run([
