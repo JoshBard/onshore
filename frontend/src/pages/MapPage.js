@@ -132,16 +132,56 @@ function MapPage() {
                   <th style={{ border: '1px solid #ccc', padding: '8px' }}>No.</th>
                   <th style={{ border: '1px solid #ccc', padding: '8px' }}>Latitude</th>
                   <th style={{ border: '1px solid #ccc', padding: '8px' }}>Longitude</th>
+                  <th style={{ border: '1px solid #ccc', padding: '8px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {waypoints.map((point, index) => (
                   <tr key={index}>
                     <td style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'center' }}>
-                      {index + 1}
+                    {index === 0
+                    ? 'Launch'
+                    : index === waypoints.length - 1
+                    ? 'Return'
+                    : index + 1}
                     </td>
                     <td style={{ border: '1px solid #ccc', padding: '8px' }}>{point.lat}</td>
                     <td style={{ border: '1px solid #ccc', padding: '8px' }}>{point.lng}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>
+                      <button
+                        onClick={() => {
+                          const updated = [...waypoints];
+                          updated.splice(index, 1);
+                          setWaypoints(updated);
+                        }}
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (index === 0) return;
+                          const updated = [...waypoints];
+                          [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
+                          setWaypoints(updated);
+                        }}
+                        disabled={index === 0}
+                        style={{ marginLeft: '5px' }}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (index === waypoints.length - 1) return;
+                          const updated = [...waypoints];
+                          [updated[index + 1], updated[index]] = [updated[index], updated[index + 1]];
+                          setWaypoints(updated);
+                        }}
+                        disabled={index === waypoints.length - 1}
+                        style={{ marginLeft: '5px' }}
+                      >
+                        ↓
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

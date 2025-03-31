@@ -281,6 +281,18 @@ app.post('/start_mission', (req, res) => {
   });
 });
 
+app.post('/resume_manual', (req, res) => {
+  const process = spawn(transmitPath, ['MSSN', 'RESUME_MSSN']);
+
+  process.on('close', (code) => {
+    if (code !== 0) {
+        console.error(`Error resuming mission, exit code: ${code}`);
+        return res.status(500).json({ success: false, error: `Exit code: ${code}` });
+    }
+    res.json({ success: true, message: 'Mission resumed' });
+  })
+})
+
 app.post('/stop_mission', (req, res) => {
   const process = spawn(transmitPath, ['MSSN', 'STOP_MSSN']);
 

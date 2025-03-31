@@ -71,6 +71,16 @@ function Home() {
     }
   };
 
+  const handleResumeMission = async () => {
+    try {
+      await axios.post(`${BASE_URL}/resume_mission`);
+      setMissionStatus('running');
+      console.log('Mission resumed');
+    } catch (error) {
+      console.error('Error resuming mission:', error);
+    }
+  };
+
   const handleStopMission = async () => {
     try {
       await axios.post(`${BASE_URL}/stop_mission`);
@@ -88,7 +98,10 @@ function Home() {
 
         <MapContainer center={mapCenter} zoom={1} style={mapContainerStyle}>
           {/* Tile Layer - Using local tiles from frontend */}
-          <TileLayer url="/map_tiles/{z}/{x}/{y}.png" />
+          <TileLayer
+            url="/map_tiles/{z}/{x}/{y}.png"
+            tms={true}
+          />
 
           {/* Render Markers */}
           {points.map((pt, idx) => (
@@ -117,7 +130,10 @@ function Home() {
         {/* Mission Control Buttons */}
         <div style={{ marginTop: '2rem' }}>
           <button onClick={handleStartMission} style={{ marginRight: '10px', backgroundColor: 'green', color: 'white' }}>
-            Start Mission
+            Start New Mission
+          </button>
+          <button onClick={handleResumeMission} style={{ marginRight: '10px', backgroundColor: 'light green', color: 'white' }}>
+            Resume Mission
           </button>
           <button onClick={handleStopMission} style={{ backgroundColor: 'red', color: 'white' }}>
             Stop Mission
