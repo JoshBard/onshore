@@ -34,7 +34,7 @@ time.sleep(2)  # Let the connection settle
 # --- Send each chunk with ack ---
 for index, chunk in enumerate(chunks):
     message = f"WP_{index}:{chunk}"
-    log_message("SUCCESS", "WP", "Sending chunk {index + 1}/{total_chunks}")
+    log_message("SUCCESS", "WP", f"Sending chunk {index + 1} / {total_chunks}")
     interface.sendText(
         text=message,
         channelIndex=CHANNEL_INDEX,
