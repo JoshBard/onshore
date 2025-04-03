@@ -8,22 +8,24 @@ from transmit_logger import log_message
 # --- Config ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 CSV_FILE = os.path.abspath(os.path.join(SCRIPT_DIR, "../../waypoints/waypoints.csv"))
-CHUNK_SIZE = 222
+CHUNK_SIZE = 222  # Raw bytes before base64 encoding
 CHANNEL_INDEX = 5
 ACK_DELAY = 0.5
 
 # --- Load and compress the CSV ---
 if not os.path.exists(CSV_FILE):
-    log_message("FAILED", "WP", "ERROR: CSV file not found at {CSV_FILE}")
+    log_message("FAILED", "WP", f"ERROR: CSV file not found at {CSV_FILE}")
     exit(1)
 
 with open(CSV_FILE, 'rb') as f:
     lines = f.readlines()[1:]  # Skip CSV header
     compressed = gzip.compress(b''.join(lines))
-    encoded = base64.b64encode(compressed).decode('ascii')
 
-# --- Split into chunks ---
-chunks = [encoded[i:i+CHUNK_SIZE] for i in range(0, len(encoded), CHUNK_SIZE)]
+# --- Split compressed bytes and base64 encode each chunk ---
+chunks = [
+    base64.b64encode(compressed[i:i+CHUNK_SIZE]).decode('ascii')
+    for i in range(0, len(compressed), CHUNK_SIZE)
+]
 total_chunks = len(chunks)
 print(f"Prepared {total_chunks} chunks for transmission")
 
