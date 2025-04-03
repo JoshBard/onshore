@@ -306,6 +306,33 @@ app.post('/stop_mission', (req, res) => {
 });
 
 /**
+ * 9) arm & disarm
+ */
+app.post('/arm', (req, res) => {
+  const process = spawn(transmitPath, ['MSSN', 'ARM']);
+
+  process.on('close', (code) => {
+      if (code !== 0) {
+          console.error(`Error arming vessel, exit code: ${code}`);
+          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
+      }
+      res.json({ success: true, message: 'Vessel armed' });
+  });
+});
+
+app.post('/disarm', (req, res) => {
+  const process = spawn(transmitPath, ['MSSN', 'DISARM']);
+
+  process.on('close', (code) => {
+      if (code !== 0) {
+          console.error(`Error distharming vessel, exit code: ${code}`);
+          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
+      }
+      res.json({ success: true, message: 'Vessel disarmed' });
+  });
+});
+
+/**
  * Start the server
  */
 server.listen(PORT, '0.0.0.0', () => {

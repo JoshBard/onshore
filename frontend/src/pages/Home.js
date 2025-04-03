@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { Link } from 'react-router-dom';
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -91,19 +90,31 @@ function Home() {
     }
   };
 
+  const handleArm = async () => {
+    try {
+      await axios.post(`${BASE_URL}/arm`);
+      console.log('System armed');
+    } catch (error) {
+      console.error('Error arming system:', error);
+    }
+  };
+
+  const handleDisarm = async () => {
+    try {
+      await axios.post(`${BASE_URL}/disarm`);
+      console.log('System disarmed');
+    } catch (error) {
+      console.error('Error disarming system:', error);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'row', margin: '20px' }}>
       <div style={{ flex: 2, marginRight: '20px' }}>
         <h1>Location Tracker</h1>
 
         <MapContainer center={mapCenter} zoom={1} style={mapContainerStyle}>
-          {/* Tile Layer - Using local tiles from frontend */}
-          <TileLayer
-            url="/map_tiles/{z}/{x}/{y}.png"
-            tms={true}
-          />
-
-          {/* Render Markers */}
+          <TileLayer url="/map_tiles/{z}/{x}/{y}.png" tms={true} />
           {points.map((pt, idx) => (
             <Marker 
               key={idx} 
@@ -111,14 +122,62 @@ function Home() {
               icon={idx === points.length - 1 ? greenIcon : redIcon}
             >
               <Popup>
-                <b>Waypoint {idx + 1}</b> <br />
+                <b>Waypoint {idx + 1}</b><br />
                 Lat: {pt.lat}, Lng: {pt.lng}
               </Popup>
             </Marker>
           ))}
         </MapContainer>
 
-        <div style={{ marginTop: '2rem' }}>
+        {/* Mission Control */}
+        <div style={{ marginTop: '2rem', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button onClick={handleStartMission} style={{ padding: '12px', backgroundColor: '#007bff', color: 'white' }}>Start Mission</button>
+          <button onClick={handleStopMission} style={{ padding: '12px', backgroundColor: '#dc3545', color: 'white' }}>Stop Mission</button>
+          <button onClick={handleResumeMission} style={{ padding: '12px', backgroundColor: '#17a2b8', color: 'white' }}>Resume</button>
+          <button onClick={handleArm} style={{ padding: '12px', backgroundColor: '#28a745', color: 'white' }}>Arm</button>
+          <button onClick={handleDisarm} style={{ padding: '12px', backgroundColor: '#6c757d', color: 'white' }}>Disarm</button>
+        </div>
+      </div>
+
+      {/* Right Side: Table + Buttons */}
+      <div style={{ flex: 1, maxHeight: '600px', display: 'flex', flexDirection: 'column', border: '1px solid #ccc', padding: '10px' }}>
+        <h2>Live Location Readings</h2>
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid black', padding: '5px' }}>#</th>
+                <th style={{ border: '1px solid black', padding: '5px' }}>Latitude</th>
+                <th style={{ border: '1px solid black', padding: '5px' }}>Longitude</th>
+                <th style={{ border: '1px solid black', padding: '5px' }}>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {points.length > 0 ? (
+                points.slice().reverse().map((pt, idx) => {
+                  const originalIndex = points.length - 1 - idx;
+                  return (
+                    <tr key={idx}>
+                      <td style={{ border: '1px solid black', padding: '5px', textAlign: 'center' }}>
+                        {originalIndex + 1}
+                      </td>
+                      <td style={{ border: '1px solid black', padding: '5px' }}>{pt.lat}</td>
+                      <td style={{ border: '1px solid black', padding: '5px' }}>{pt.lng}</td>
+                      <td style={{ border: '1px solid black', padding: '5px' }}>{pt.timestamp}</td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="4" style={{ textAlign: 'center', padding: '10px' }}>No waypoints available</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* CSV Buttons */}
+        <div style={{ marginTop: '10px' }}>
           <a href={`${BASE_URL}/download_location`} download>
             <button>Download Location CSV</button>
           </a>
@@ -126,50 +185,6 @@ function Home() {
             Clear Location CSV
           </button>
         </div>
-
-        {/* Mission Control Buttons */}
-        <div style={{ marginTop: '2rem' }}>
-          <button onClick={handleStartMission} style={{ marginRight: '10px', backgroundColor: 'green', color: 'white' }}>
-            Start New Mission
-          </button>
-          <button onClick={handleResumeMission} style={{ marginRight: '10px', backgroundColor: 'light green', color: 'white' }}>
-            Resume Mission
-          </button>
-          <button onClick={handleStopMission} style={{ backgroundColor: 'red', color: 'white' }}>
-            Stop Mission
-          </button>
-        </div>
-      </div>
-
-      {/* Data Table on the Right */}
-      <div style={{ flex: 1, maxHeight: '600px', overflowY: 'auto', border: '1px solid #ccc', padding: '10px' }}>
-        <h2>Live Location Readings</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ border: '1px solid black', padding: '5px' }}>#</th>
-              <th style={{ border: '1px solid black', padding: '5px' }}>Latitude</th>
-              <th style={{ border: '1px solid black', padding: '5px' }}>Longitude</th>
-              <th style={{ border: '1px solid black', padding: '5px' }}>Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            {points.length > 0 ? (
-              points.slice().reverse().map((pt, idx) => (
-                <tr key={idx}>
-                  <td style={{ border: '1px solid black', padding: '5px', textAlign: 'center' }}>{points.length - idx}</td>
-                  <td style={{ border: '1px solid black', padding: '5px' }}>{pt.lat}</td>
-                  <td style={{ border: '1px solid black', padding: '5px' }}>{pt.lng}</td>
-                  <td style={{ border: '1px solid black', padding: '5px' }}>{pt.timestamp}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="4" style={{ textAlign: 'center', padding: '10px' }}>No waypoints available</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
       </div>
     </div>
   );
