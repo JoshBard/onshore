@@ -7,8 +7,8 @@ import random
 # --- Config ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 # Define paths for CSV files
-LOCATION_CSV = os.path.join(SCRIPT_DIR, "../../location_data/live_location.csv")
-TELEM_CSV = os.path.join(SCRIPT_DIR, "../../location_data/live_telem.csv")
+LOCATION_CSV = os.path.join(SCRIPT_DIR, "../../telemetry_data/live_location.csv")
+TELEM_CSV = os.path.join(SCRIPT_DIR, "../../telemetry_data/live_telem.csv")
 MAX_ENTRIES = 1000  # Maximum number of data rows (excluding header)
 
 # Ensure the directory for CSV files exists
