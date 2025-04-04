@@ -12,7 +12,7 @@ PROCESSED_IDS_FILE = os.path.join(SCRIPT_DIR, ".processed_msg_ids")
 TELEM_UPDATE = os.path.join(SCRIPT_DIR, "receive_scripts", "telem_receive.py")
 SOURCE_ID = "!eb15a9fe"
 
-sif not os.path.exists(PROCESSED_IDS_FILE):
+if not os.path.exists(PROCESSED_IDS_FILE):
     with open(PROCESSED_IDS_FILE, "w") as f:
         pass
 
