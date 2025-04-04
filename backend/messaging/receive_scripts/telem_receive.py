@@ -6,9 +6,14 @@ import random
 
 # --- Config ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+# Define paths for CSV files
 LOCATION_CSV = os.path.join(SCRIPT_DIR, "../../location_data/live_location.csv")
 TELEM_CSV = os.path.join(SCRIPT_DIR, "../../location_data/live_telem.csv")
 MAX_ENTRIES = 1000  # Maximum number of data rows (excluding header)
+
+# Ensure the directory for CSV files exists
+location_dir = os.path.dirname(LOCATION_CSV)
+os.makedirs(location_dir, exist_ok=True)
 
 # --- Ensure CSV Files Exist with Headers ---
 def ensure_csv(file_path, header):
@@ -45,8 +50,8 @@ if len(sys.argv) < 2:
 telem_update = sys.argv[1]
 
 # Remove "TELEM_" prefix if present.
-if telem_update.startswith("TLM_"):
-    telem_update = telem_update[len("TLM_"):]
+if telem_update.startswith("TELEM_"):
+    telem_update = telem_update[len("TELEM_"):]
 
 # --- Parse the Telemetry Update ---
 # Expected format: KEY=VALUE|KEY=VALUE|...
