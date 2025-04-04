@@ -9,11 +9,10 @@ from receive_scripts.receive_logger import log_message
 # --- Config ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 PROCESSED_IDS_FILE = os.path.join(SCRIPT_DIR, ".processed_msg_ids")
-LOCATION_UPDATE = os.path.join(SCRIPT_DIR, "receive_scripts", "location_receive.py")
+TELEM_UPDATE = os.path.join(SCRIPT_DIR, "receive_scripts", "telem_receive.py")
 SOURCE_ID = "!eb15a9fe"
 
-os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-if not os.path.exists(PROCESSED_IDS_FILE):
+sif not os.path.exists(PROCESSED_IDS_FILE):
     with open(PROCESSED_IDS_FILE, "w") as f:
         pass
 
@@ -41,10 +40,10 @@ def handle_message(packet, interface):
 
     mark_processed(msg_id)
 
-    if message.startswith("LOC_"):
-        clean_message = message.replace("LOC_", "")
-        log_message("RECEIVED", "LOC", message)
-        subprocess.Popen(["python3", LOCATION_UPDATE, clean_message])
+    if message.startswith("TLM"):
+        clean_message = message.replace("TLM_", "")
+        log_message("RECEIVED", "TLM", message)
+        subprocess.Popen(["python3", TELEM_UPDATE, clean_message])
     else:
         log_message("FAILED", "UNKNOWN", f"Unrecognized message format: {message}")
 

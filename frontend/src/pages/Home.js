@@ -108,6 +108,15 @@ function Home() {
     }
   };
 
+  const handleReturnHome = async () => {
+    try {
+      await axios.post(`${BASE_URL}/rtm`);
+      console.log('Returned to Home via /rtm endpoint');
+    } catch (error) {
+      console.error('Error returning to home:', error);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'row', margin: '20px' }}>
       <div style={{ flex: 2, marginRight: '20px' }}>
@@ -136,10 +145,11 @@ function Home() {
           <button onClick={handleResumeMission} style={{ padding: '12px', backgroundColor: '#17a2b8', color: 'white' }}>Resume</button>
           <button onClick={handleArm} style={{ padding: '12px', backgroundColor: '#28a745', color: 'white' }}>Arm</button>
           <button onClick={handleDisarm} style={{ padding: '12px', backgroundColor: '#6c757d', color: 'white' }}>Disarm</button>
+          <button onClick={handleReturnHome} style={{ padding: '12px', backgroundColor: '#ffc107', color: 'white' }}>Return to Home</button>
         </div>
       </div>
 
-      {/* Right Side: Table + Buttons */}
+      {/* Right Side: Table + CSV Buttons */}
       <div style={{ flex: 1, maxHeight: '600px', display: 'flex', flexDirection: 'column', border: '1px solid #ccc', padding: '10px' }}>
         <h2>Live Location Readings</h2>
         <div style={{ overflowY: 'auto', flex: 1 }}>

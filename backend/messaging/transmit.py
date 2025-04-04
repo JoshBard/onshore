@@ -37,6 +37,13 @@ elif message_type == "MSSN":
     command = sys.argv[2]
     subprocess.run(["python3", os.path.join(SEND_DIR, "send_mission.py"), command], check=True)
 
+elif message_type == "CRITICAL":
+    if len(sys.argv) < 3:
+        log_message("FAILED", "CRITICAL", "No critical command provided.")
+        sys.exit(1)
+    command = sys.argv[2]
+    subprocess.run(["python3", os.path.join(SEND_DIR, "send_critical.py"), command], check=True)
+
 else:
     log_message("FAILED", message_type, "Invalid message type.")
     sys.exit(1)

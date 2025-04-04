@@ -21,7 +21,7 @@ app.use(cors());
 app.use(express.json());
 
 // Path to the CSV file
-const locationFilePath = path.join(__dirname, 'location_data', 'live_location.csv');
+const locationFilePath = path.join(__dirname, 'telemetry_data', 'live_location.csv');
 const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
 const transmitPath = path.join(__dirname, 'messaging', 'transmit.py');
 
@@ -325,10 +325,25 @@ app.post('/disarm', (req, res) => {
 
   process.on('close', (code) => {
       if (code !== 0) {
-          console.error(`Error distharming vessel, exit code: ${code}`);
+          console.error(`Error disarming vessel, exit code: ${code}`);
           return res.status(500).json({ success: false, error: `Exit code: ${code}` });
       }
       res.json({ success: true, message: 'Vessel disarmed' });
+  });
+});
+
+/**
+ * 10) Return to home
+ */
+app.post('/rth', (req, res) => {
+  const process = spawn(transmitPath, ['CRITICAL', 'RTH']);
+
+  process.on('close', (code) => {
+      if (code !== 0) {
+          console.error(`Error returning vessel home: ${code}`);
+          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
+      }
+      res.json({ success: true, message: 'Vessel on its way home' });
   });
 });
 
