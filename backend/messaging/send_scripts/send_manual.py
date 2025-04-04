@@ -23,8 +23,6 @@ result = subprocess.run([
 ], capture_output=True)
 
 if result.returncode == 0:
-    with open(LAST_MANUAL_FILE, "w") as f:
-        f.write(final_message)
     log_message("SUCCESS", "MAN", f"{final_message} | {result.stdout.decode()}")
 else:
     log_message("FAILED", "MAN", f"{final_message} | {result.stderr.decode()}")
