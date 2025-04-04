@@ -6,8 +6,8 @@ import random
 
 # --- Config ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-LOCATION_CSV = os.path.join(SCRIPT_DIR, "../../telemetry_data/live_location.csv")
-TELEM_CSV = os.path.join(SCRIPT_DIR, "../../telemetry_data/live_telem.csv")
+LOCATION_CSV = os.path.join(SCRIPT_DIR, "../../location_data/live_location.csv")
+TELEM_CSV = os.path.join(SCRIPT_DIR, "../../location_data/live_telem.csv")
 MAX_ENTRIES = 1000  # Maximum number of data rows (excluding header)
 
 # --- Ensure CSV Files Exist with Headers ---
@@ -17,15 +17,19 @@ def ensure_csv(file_path, header):
             writer = csv.writer(f)
             writer.writerow(header)
 
-ensure_csv(LOCATION_CSV, ["timestamp", "lat", "long", "sensor_data"])
-ensure_csv(TELEM_CSV, ["timestamp", "telem_update", "sensor_data"])
+# live_location.csv now only contains timestamp, lat, and long (no sensor_data)
+ensure_csv(LOCATION_CSV, ["timestamp", "lat", "long"])
+
+# live_telem.csv will have each telemetry value in its own column plus a sensor_data column.
+# Expected telemetry keys: BATT, CUR, LVL, GPS_FIX, GPS_SATS, LAT, LON, ALT, MODE
+ensure_csv(TELEM_CSV, ["timestamp", "BATT", "CUR", "LVL", "GPS_FIX", "GPS_SATS", "LAT", "LON", "ALT", "MODE", "sensor_data"])
 
 # --- Function to Trim CSV to the Last MAX_ENTRIES ---
 def trim_csv(file_path, max_entries):
     with open(file_path, mode="r", newline="") as f:
         reader = csv.reader(f)
         rows = list(reader)
-    # rows[0] is the header; if number of data rows exceeds max_entries, trim them.
+    # rows[0] is the header; if the number of data rows exceeds max_entries, trim them.
     if len(rows) - 1 <= max_entries:
         return
     header = rows[0]
@@ -40,45 +44,45 @@ if len(sys.argv) < 2:
 
 telem_update = sys.argv[1]
 
-# Optionally remove the "TELEM_" prefix if present.
-if telem_update.startswith("TELEM_"):
-    telem_update = telem_update[len("TELEM_"):]
+# Remove "TELEM_" prefix if present.
+if telem_update.startswith("TLM_"):
+    telem_update = telem_update[len("TLM_"):]
 
-# --- Parse the Telemetry Update for Location Data ---
-# Expect telemetry in format: KEY=VALUE|KEY=VALUE|...
-parts = telem_update.split("|")
-lat = None
-lon = None
-for part in parts:
-    if part.startswith("LAT="):
-        try:
-            lat = part.split("=")[1]
-        except IndexError:
-            pass
-    elif part.startswith("LON="):
-        try:
-            lon = part.split("=")[1]
-        except IndexError:
-            pass
+# --- Parse the Telemetry Update ---
+# Expected format: KEY=VALUE|KEY=VALUE|...
+fields = telem_update.split("|")
+telem_data = {}
+for field in fields:
+    if "=" in field:
+        key, value = field.split("=", 1)
+        telem_data[key.strip()] = value.strip()
 
-if lat is None or lon is None:
+# Expected telemetry keys for telem CSV
+expected_keys = ["BATT", "CUR", "LVL", "GPS_FIX", "GPS_SATS", "LAT", "LON", "ALT", "MODE"]
+# Fill in any missing keys with an empty string
+for key in expected_keys:
+    if key not in telem_data:
+        telem_data[key] = ""
+
+# For live_location.csv, ensure we have latitude and longitude.
+if telem_data["LAT"] == "" or telem_data["LON"] == "":
     print("Location data (LAT and LON) not found in telemetry update.")
     sys.exit(1)
 
 # --- Generate Timestamp and Random Sensor Data ---
 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-sensor_data_location = random.randint(0, 99)
 sensor_data_telem = random.randint(0, 99)
 
-# --- Append Data to Location CSV ---
+# --- Append Data to live_location.csv (only timestamp, lat, long) ---
 with open(LOCATION_CSV, mode="a", newline="") as f:
     writer = csv.writer(f)
-    writer.writerow([timestamp, lat, lon, sensor_data_location])
+    writer.writerow([timestamp, telem_data["LAT"], telem_data["LON"]])
 
-# --- Append Data to Telem CSV ---
+# --- Append Data to live_telem.csv (all telemetry fields + sensor_data) ---
 with open(TELEM_CSV, mode="a", newline="") as f:
     writer = csv.writer(f)
-    writer.writerow([timestamp, telem_update, sensor_data_telem])
+    row = [timestamp] + [telem_data[key] for key in expected_keys] + [sensor_data_telem]
+    writer.writerow(row)
 
 # --- Trim Both CSV Files to the Last MAX_ENTRIES ---
 trim_csv(LOCATION_CSV, MAX_ENTRIES)
