@@ -3,23 +3,39 @@ import os
 import sys
 import time
 import subprocess
+import csv
+import random
 from datetime import datetime
 from meshtastic.tcp_interface import TCPInterface
 from pubsub import pub
-from receive_scripts.receive_logger import log_message
+from receive_logger import log_message
 
 # --- Configuration ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 PROCESSED_IDS_FILE = os.path.join(SCRIPT_DIR, ".processed_msg_ids")
-TELEM_UPDATE = os.path.join(SCRIPT_DIR, "receive_scripts", "telem_receive.py")
 SOURCE_ID = "!eb15a9fe"
 
 # File for exposing connection status to the UI.
 STATUS_FILE = os.path.join(SCRIPT_DIR, "connection_status.txt")
 
-# Global connection variables
-is_connected = False
-last_tlm_time = None
+# Telemetry CSV configuration
+TELEM_CSV = os.path.join(SCRIPT_DIR, "../../telemetry_data/live_telem.csv")
+MAX_ENTRIES = 1000  # Maximum number of data rows (excluding header)
+EXPECTED_KEYS = ["BATT", "CUR", "LVL", "GPS_FIX", "GPS_SATS", "LAT", "LON", "ALT", "MODE"]
+CSV_HEADER = ["timestamp"] + EXPECTED_KEYS + ["sensor_data"]
+
+# --- Ensure the Telemetry CSV Exists ---
+def ensure_csv(file_path, header):
+    # Create the directory if it doesn't exist.
+    dir_path = os.path.dirname(file_path)
+    os.makedirs(dir_path, exist_ok=True)
+    if not os.path.isfile(file_path):
+        with open(file_path, mode="w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+        log_message("INFO", "TLM", f"CSV created with header at {file_path}")
+
+ensure_csv(TELEM_CSV, CSV_HEADER)
 
 # --- Utility Functions for Processed IDs and Connection Status ---
 def update_status_file(status):
@@ -39,6 +55,65 @@ def is_duplicate(msg_id):
 def mark_processed(msg_id):
     with open(PROCESSED_IDS_FILE, "a") as f:
         f.write(f"{msg_id}\n")
+
+# --- Telemetry Update Processing ---
+def trim_csv(file_path, max_entries):
+    with open(file_path, mode="r", newline="") as f:
+        reader = csv.reader(f)
+        rows = list(reader)
+    # rows[0] is the header; if the number of data rows exceeds max_entries, trim them.
+    if len(rows) - 1 <= max_entries:
+        return
+    header = rows[0]
+    trimmed_rows = [header] + rows[-max_entries:]
+    with open(file_path, mode="w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(trimmed_rows)
+    log_message("INFO", "TLM", f"CSV trimmed to last {max_entries} entries.")
+
+def process_telem_update(telem_update):
+    """
+    Process the telemetry update string and append data to the CSV.
+    Expected format: KEY=VALUE|KEY=VALUE|...
+    """
+    # Remove "TELEM_" prefix if present.
+    if telem_update.startswith("TELEM_"):
+        telem_update = telem_update[len("TELEM_"):]
+    
+    # Parse telemetry update.
+    fields = telem_update.split("|")
+    telem_data = {}
+    for field in fields:
+        if "=" in field:
+            key, value = field.split("=", 1)
+            telem_data[key.strip()] = value.strip()
+    
+    # Fill in missing keys with empty strings.
+    for key in EXPECTED_KEYS:
+        if key not in telem_data:
+            telem_data[key] = ""
+    
+    # Ensure location data is present.
+    if telem_data["LAT"] == "" or telem_data["LON"] == "":
+        log_message("FAILED", "TLM", "Location data (LAT and LON) not found in telemetry update.")
+        return
+    
+    # Generate timestamp and random sensor data.
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    sensor_data_telem = random.randint(0, 99)
+    
+    # Construct the row.
+    row = [timestamp] + [telem_data[key] for key in EXPECTED_KEYS] + [sensor_data_telem]
+    
+    try:
+        with open(TELEM_CSV, mode="a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(row)
+        log_message("SUCCESS", "TLM", f"Appended telemetry data at {timestamp}")
+    except Exception as e:
+        log_message("FAILED", "TLM", f"Error appending telemetry data: {e}")
+    
+    trim_csv(TELEM_CSV, MAX_ENTRIES)
 
 # --- Connection Monitor Thread ---
 def connection_monitor():
@@ -89,10 +164,12 @@ def handle_message(packet, interface):
 
     # When we receive a telemetry update...
     elif message.startswith("TLM"):
-        clean_message = message.replace("TLM_", "")
+        # Remove the "TLM_" prefix.
+        clean_message = message.replace("TLM_", "", 1)
         last_tlm_time = time.time()
         log_message("RECEIVED", "TLM", message)
-        subprocess.Popen(["python3", TELEM_UPDATE, clean_message])
+        # Process telemetry update inline.
+        process_telem_update(clean_message)
     else:
         log_message("FAILED", "UNKNOWN", f"Unrecognized message format: {message}")
 
@@ -104,7 +181,7 @@ if __name__ == "__main__":
     monitor_thread = threading.Thread(target=connection_monitor, daemon=True)
     monitor_thread.start()
 
-    # Create the TCPInterface and subscribe to receive channel.
+    # Create the TCPInterface and subscribe to the receive channel.
     interface = TCPInterface(hostname="localhost")
     pub.subscribe(handle_message, "meshtastic.receive")
     
