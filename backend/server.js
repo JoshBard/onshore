@@ -23,6 +23,7 @@ app.use(express.json());
 const telemtryFilePath = path.join(__dirname, 'telemetry_data', 'live_telem.csv');
 const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
 const transmitPath = path.join(__dirname, 'messaging', 'transmit.py');
+const statusPath = path.join(__dirname, 'messaging', 'connection_status.txt');
 
 /**
  * Only socket connection, used for WASD
@@ -394,6 +395,18 @@ app.post('/motor_boat', (req, res) => {
           return res.status(500).json({ success: false, error: `Exit code: ${code}` });
       }
       res.json({ success: true, message: 'Vessel is under motor power' });
+  });
+});
+
+/**
+ * 12) Connection status
+ */
+app.get('/api/connection_status', (req, res) => {
+  fs.readFile(STATUS_FILE, 'utf8', (err, data) => {
+    if(err){
+      return res.status(500).json({ status: 'disconnected', error: err.message });
+    }
+    res.json({ status: data.trim() });
   });
 });
 
