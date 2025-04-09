@@ -3,7 +3,7 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 
 // Adjust BASE_URL as needed
-const BASE_URL = process.env.REACT_APP_TEST;
+const BASE_URL = process.env.REACT_APP_RPI;
 const socket = io(`${BASE_URL}`); // WebSocket connection to backend
 
 const ManualControl = () => {

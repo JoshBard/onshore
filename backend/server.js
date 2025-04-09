@@ -402,7 +402,7 @@ app.post('/motor_boat', (req, res) => {
  * 12) Connection status
  */
 app.get('/api/connection_status', (req, res) => {
-  fs.readFile(STATUS_FILE, 'utf8', (err, data) => {
+  fs.readFile(statusPath, 'utf8', (err, data) => {
     if(err){
       return res.status(500).json({ status: 'disconnected', error: err.message });
     }
