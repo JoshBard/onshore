@@ -5,6 +5,7 @@ import time
 import subprocess
 import csv
 import random
+import threading
 from datetime import datetime
 from meshtastic.tcp_interface import TCPInterface
 from pubsub import pub
@@ -23,6 +24,9 @@ TELEM_CSV = os.path.join(SCRIPT_DIR, "../../telemetry_data/live_telem.csv")
 MAX_ENTRIES = 1000  # Maximum number of data rows (excluding header)
 EXPECTED_KEYS = ["BATT", "CUR", "LVL", "GPS_FIX", "GPS_SATS", "LAT", "LON", "ALT", "MODE"]
 CSV_HEADER = ["timestamp"] + EXPECTED_KEYS + ["sensor_data"]
+
+is_connected = False
+last_tlm_time = None
 
 # --- Ensure the Telemetry CSV Exists ---
 def ensure_csv(file_path, header):
