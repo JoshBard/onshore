@@ -16,12 +16,11 @@ const io = socketIo(server, {
 });
 const PORT = 4000; // or your preferred port
 
-// Optionally enable all CORS requests (for dev)
 app.use(cors());
 app.use(express.json());
 
 // Path to the CSV file
-const locationFilePath = path.join(__dirname, 'telemetry_data', 'live_location.csv');
+const telemtryFilePath = path.join(__dirname, 'telemetry_data', 'live_telem.csv');
 const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
 const transmitPath = path.join(__dirname, 'messaging', 'transmit.py');
 
@@ -71,9 +70,9 @@ app.get('/api/mapkey', (req, res) => {
 /**
  * 2) Download CSV files
  */
-app.get('/download_location', (req, res) => {
-  if (fs.existsSync(locationFilePath)) {
-    res.download(locationFilePath, 'data.csv', (err) => {
+app.get('/download_telemetry', (req, res) => {
+  if (fs.existsSync(telemtryFilePath)) {
+    res.download(telemtryFilePath, 'live_telem.csv', (err) => {
       if (err) {
         console.error('Error during file download:', err);
         res.status(500).send('Error downloading the file.');
@@ -100,9 +99,9 @@ app.get('/download_waypoints', (req, res) => {
 /**
  * 3) Clear CSV files
  */
-app.post('/clear_location_csv', (req, res) => {
-  if (fs.existsSync(locationFilePath)) {
-    fs.writeFile(locationFilePath, '', (err) => {
+app.post('/clear_telemetry_csv', (req, res) => {
+  if (fs.existsSync(telemtryFilePath)) {
+    fs.writeFile(telemtryFilePath, '', (err) => {
       if (err) {
         console.error('Error clearing the file:', err);
         return res.status(500).send('Error clearing the file.');
@@ -129,35 +128,59 @@ app.post('/clear_waypoints_csv', (req, res) => {
 });
 
 /**
- * 4) Get parsed location data from CSV
+ * 4) Get parsed data from CSV
  */
 app.get('/points', (req, res) => {
-  if (!fs.existsSync(locationFilePath)) {
+  if (!fs.existsSync(telemtryFilePath)) {
     return res.status(404).json({ error: 'File not found.' });
   }
 
   try {
-    const csvText = fs.readFileSync(locationFilePath, 'utf8');
+    const csvText = fs.readFileSync(telemtryFilePath, 'utf8');
     const lines = csvText.split('\n').filter((ln) => ln.trim() !== '');
 
-    // Check if first line is a header
-    const hasHeader = lines[0].toLowerCase().includes('timestamp');
-    const dataLines = hasHeader ? lines.slice(1) : lines;
+    // Check if the first line is a header (assuming it contains "timestamp")
+    let header;
+    let dataLines;
+    if (lines[0].toLowerCase().includes('timestamp')) {
+      header = lines[0].split(',').map(s => s.trim());
+      dataLines = lines.slice(1);
+    } else {
+      // Define header manually if not present.
+      header = ["timestamp", "BATT", "CUR", "LVL", "GPS_FIX", "GPS_SATS", "LAT", "LON", "ALT", "MODE", "sensor_data"];
+      dataLines = lines;
+    }
 
-    // Parse each line into an object
+    // Parse each CSV line into an object.
     const points = dataLines.map((line) => {
-      const [timestamp, latStr, lngStr, sensorStr] = line.split(',').map((s) => s.trim());
-      return {
-        timestamp,
-        lat: parseFloat(latStr),
-        lng: parseFloat(lngStr),
-        sensorData: parseInt(sensorStr, 10),
-      };
+      const fields = line.split(',').map((s) => s.trim());
+      const point = {};
+      header.forEach((key, index) => {
+        point[key] = fields[index];
+      });
+      // Convert LAT and LON to numbers.
+      point.LAT = parseFloat(point.LAT);
+      point.LON = parseFloat(point.LON);
+      return point;
     });
 
-    res.json(points);
+    // Build the returned object using only the expected telemetry keys.
+    const filteredPoints = points.map((p) => ({
+      timestamp: p.timestamp,
+      BATT: p.BATT,
+      CUR: p.CUR,
+      LVL: p.LVL,
+      GPS_FIX: p.GPS_FIX,
+      GPS_SATS: p.GPS_SATS,
+      LAT: p.LAT,
+      LON: p.LON,
+      ALT: p.ALT,
+      MODE: p.MODE
+    }));
+
+    res.json(filteredPoints);
   } catch (err) {
-    console.error('Error reading/ parsing CSV:', err);
+    console.error('Error reading/parsing CSV:', err);
     res.status(500).json({ error: 'Error parsing file.' });
   }
 });
@@ -335,8 +358,8 @@ app.post('/disarm', (req, res) => {
 /**
  * 10) Return to home
  */
-app.post('/rth', (req, res) => {
-  const process = spawn(transmitPath, ['CRITICAL', 'RTH']);
+app.post('/rtl', (req, res) => {
+  const process = spawn(transmitPath, ['MSSN', 'START_RTL']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -344,6 +367,33 @@ app.post('/rth', (req, res) => {
           return res.status(500).json({ success: false, error: `Exit code: ${code}` });
       }
       res.json({ success: true, message: 'Vessel on its way home' });
+  });
+});
+
+/**
+ * 11) Toggle autonomous mode
+ */
+app.post('/sailboat', (req, res) => {
+  const process = spawn(transmitPath, ['MSSN', 'SAIL']);
+
+  process.on('close', (code) => {
+      if (code !== 0) {
+          console.error(`Error switching to sail power: ${code}`);
+          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
+      }
+      res.json({ success: true, message: 'Vessel is under sail power' });
+  });
+});
+
+app.post('/motor_boat', (req, res) => {
+  const process = spawn(transmitPath, ['MSSN', 'MOTOR']);
+
+  process.on('close', (code) => {
+      if (code !== 0) {
+          console.error(`Error switching to motor power: ${code}`);
+          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
+      }
+      res.json({ success: true, message: 'Vessel is under motor power' });
   });
 });
 
