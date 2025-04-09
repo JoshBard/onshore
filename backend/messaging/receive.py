@@ -1,62 +1,134 @@
+#!/usr/bin/env python3
 import os
-import time
+import sys
+import csv
 from datetime import datetime
-from meshtastic.tcp_interface import TCPInterface
-from pubsub import pub
-import subprocess
-from receive_scripts.receive_logger import log_message
+import random
+import queue
+import threading
 
-# --- Config ---
+# Import logger from your receive scripts folder.
+from receive_logger import log_message
+
+# --- Configuration ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-PROCESSED_IDS_FILE = os.path.join(SCRIPT_DIR, ".processed_msg_ids")
-TELEM_UPDATE = os.path.join(SCRIPT_DIR, "receive_scripts", "telem_receive.py")
-SOURCE_ID = "!eb15a9fe"
+# Define the absolute path for the telemetry CSV file.
+TELEM_CSV = os.path.join(SCRIPT_DIR, "../telemetry_data/live_telem.csv")
+MAX_ENTRIES = 1000  # Maximum number of data rows (excluding header)
 
-if not os.path.exists(PROCESSED_IDS_FILE):
-    with open(PROCESSED_IDS_FILE, "w") as f:
-        pass
+# Ensure the directory for the CSV file exists.
+telem_dir = os.path.dirname(TELEM_CSV)
+os.makedirs(telem_dir, exist_ok=True)
 
-def is_duplicate(msg_id):
-    with open(PROCESSED_IDS_FILE, "r") as f:
-        seen_ids = set(line.strip() for line in f)
-    return msg_id in seen_ids
+# --- Function: Ensure CSV Exists with Headers ---
+def ensure_csv(file_path, header):
+    if not os.path.isfile(file_path):
+        with open(file_path, mode="w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+        log_message("INFO", "TELEM", f"CSV created with header at {file_path}")
 
-def mark_processed(msg_id):
-    with open(PROCESSED_IDS_FILE, "a") as f:
-        f.write(f"{msg_id}\n")
+# live_telem.csv will have each telemetry value in its own column, plus a sensor_data column.
+# Expected telemetry keys: BATT, CUR, LVL, GPS_FIX, GPS_SATS, LAT, LON, ALT, MODE
+HEADER = ["timestamp", "BATT", "CUR", "LVL", "GPS_FIX", "GPS_SATS", "LAT", "LON", "ALT", "MODE", "sensor_data"]
+ensure_csv(TELEM_CSV, HEADER)
 
-# --- Dispatcher ---
-def handle_message(packet, interface):
-    from_id = packet.get("fromId", "")
-    if from_id != SOURCE_ID:
+# --- Function: Trim CSV to the Last MAX_ENTRIES ---
+def trim_csv(file_path, max_entries):
+    with open(file_path, mode="r", newline="") as f:
+        reader = csv.reader(f)
+        rows = list(reader)
+    # rows[0] is the header; if the number of data rows exceeds max_entries, trim them.
+    if len(rows) - 1 <= max_entries:
         return
+    header = rows[0]
+    trimmed_rows = [header] + rows[-max_entries:]
+    with open(file_path, mode="w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(trimmed_rows)
+    log_message("INFO", "TELEM", f"CSV trimmed to last {max_entries} entries.")
 
-    decoded = packet.get("decoded", {})
-    message = decoded.get("text", "")
-    msg_id = str(packet.get("id", ""))
-
-    if not message or is_duplicate(msg_id):
+# --- Function: Process a Telemetry Update ---
+def process_telem_update(telem_update):
+    """
+    Processes a telemetry update string and appends the parsed data to the CSV.
+    Expected format: KEY=VALUE|KEY=VALUE|...
+    """
+    # Remove "TELEM_" prefix if present.
+    if telem_update.startswith("TELEM_"):
+        telem_update = telem_update[len("TELEM_"):]
+    
+    # Parse the telemetry update.
+    fields = telem_update.split("|")
+    telem_data = {}
+    for field in fields:
+        if "=" in field:
+            key, value = field.split("=", 1)
+            telem_data[key.strip()] = value.strip()
+    
+    # Expected telemetry keys.
+    expected_keys = ["BATT", "CUR", "LVL", "GPS_FIX", "GPS_SATS", "LAT", "LON", "ALT", "MODE"]
+    # Fill in any missing keys with an empty string.
+    for key in expected_keys:
+        if key not in telem_data:
+            telem_data[key] = ""
+    
+    # Check that latitude and longitude are present.
+    if telem_data["LAT"] == "" or telem_data["LON"] == "":
+        log_message("FAILED", "TELEM", "Location data (LAT and LON) not found in telemetry update.")
         return
+    
+    # Generate the timestamp and random sensor data.
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    sensor_data_telem = random.randint(0, 99)
+    
+    # Construct the row in the order: timestamp, expected keys, then sensor_data.
+    row = [timestamp] + [telem_data[key] for key in expected_keys] + [sensor_data_telem]
+    
+    # Append the new row to the CSV.
+    try:
+        with open(TELEM_CSV, mode="a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(row)
+        log_message("SUCCESS", "TELEM", f"Appended telemetry data at {timestamp}")
+    except Exception as e:
+        log_message("FAILED", "TELEM", f"Error appending telemetry data: {e}")
+    
+    # Trim the CSV file if needed.
+    trim_csv(TELEM_CSV, MAX_ENTRIES)
 
-    mark_processed(msg_id)
-
-    if message.startswith("TLM"):
-        clean_message = message.replace("TLM_", "")
-        log_message("RECEIVED", "TLM", message)
-        subprocess.Popen(["python3", TELEM_UPDATE, clean_message])
-    else:
-        log_message("FAILED", "UNKNOWN", f"Unrecognized message format: {message}")
+# --- Worker Thread for Telemetry Updates ---
+def telem_worker(q):
+    while True:
+        update = q.get()
+        if update is None:  # Shutdown signal.
+            break
+        process_telem_update(update)
+        q.task_done()
 
 # --- Main ---
+def main():
+    # This script expects one telemetry update as a command-line argument.
+    if len(sys.argv) < 2:
+        log_message("FAILED", "TELEM", "No telemetry update provided.")
+        sys.exit(1)
+    
+    telem_update = sys.argv[1]
+    
+    # Create a thread-safe queue for telemetry updates.
+    telem_queue = queue.Queue()
+    # Start the worker thread.
+    worker_thread = threading.Thread(target=telem_worker, args=(telem_queue,), daemon=True)
+    worker_thread.start()
+    
+    # Enqueue the telemetry update.
+    telem_queue.put(telem_update)
+    # Wait until the queue is fully processed.
+    telem_queue.join()
+    
+    # Signal the worker thread to exit.
+    telem_queue.put(None)
+    worker_thread.join()
+
 if __name__ == "__main__":
-    print(f"Listening for Meshtastic messages from {SOURCE_ID}...")
-
-    interface = TCPInterface(hostname="localhost")
-    pub.subscribe(handle_message, "meshtastic.receive")
-
-    try:
-        while True:
-            time.sleep(0.1)
-    except KeyboardInterrupt:
-        print("Shutting down...")
-        interface.close()
+    main()
