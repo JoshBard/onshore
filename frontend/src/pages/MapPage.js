@@ -51,8 +51,10 @@ function MapPage() {
   // Upload the current list of waypoints to the server
   const handleUploadCoordinates = async () => {
     try {
-      const response = await axios.post(`${BASE_URL}/uploadWaypoints`, { waypoints });
-      alert(response.data.message);
+      const upload_response = await axios.post(`${BASE_URL}/uploadWaypoints`, { waypoints });
+      alert(upload_response.data.message);
+      const send_response = await axios.post(`${BASE_URL}/sendWaypoints`);
+      alert(send_response.data.message);
     } catch (error) {
       console.error('Error uploading waypoints:', error);
       alert('Failed to upload waypoints.');

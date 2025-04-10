@@ -31,6 +31,8 @@ function UploadPage() {
         try {
           await axios.post(`${BASE_URL}/uploadWaypoints`, { waypoints });
           alert('Waypoints uploaded successfully.');
+          await axios.post(`${BASE_URL}/sendWaypoints`);
+          alert('Waypoints sent successfully.');
         } catch (error) {
           console.error('Error uploading waypoints:', error);
           alert('Failed to upload waypoints.');
