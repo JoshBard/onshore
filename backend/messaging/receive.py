@@ -13,9 +13,11 @@ from pubsub import pub
 from receive_logger import log_message
 
 # --- Load environment variable ---
-BASE_URL = os.environ.get("REACT_APP_TEST")
+env_path = Path(__file__).resolve().parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
+BASE_URL = os.environ.get("REACT_APP_ROUTER")
 if not BASE_URL:
-    print("Error: Environment variable REACT_APP_TEST not set")
+    print("Error: Environment variable REACT_APP not set")
     sys.exit(1)
 
 # --- Configuration ---
