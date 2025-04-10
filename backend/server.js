@@ -11,18 +11,9 @@ const { spawn } = require('child_process');
 
 const app = express();
 const server = http.createServer(app);
-const allowedOrigins = ['http://onshore.local:3000', 'http://192.168.1.68:3000'];
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  }
-}));
+const io = socketIo(server, {
+    cors: { origin: `${BASE_URL}:3000`, methods: ["GET", "POST"] }
+});
 const PORT = 4000; // or your preferred port
 
 app.use(cors());
