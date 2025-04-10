@@ -11,6 +11,8 @@ from datetime import datetime
 from meshtastic.tcp_interface import TCPInterface
 from pubsub import pub
 from receive_logger import log_message
+from dotenv import load_dotenv
+from pathlib import Path
 
 # --- Load environment variable ---
 env_path = Path(__file__).resolve().parent.parent / '.env'

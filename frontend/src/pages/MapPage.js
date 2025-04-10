@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
 // Adjust BASE_URL if needed
-const BASE_URL = process.env.REACT_APP_TEST;
+const BASE_URL = process.env.REACT_APP_ROUTER;
 
 const mapContainerStyle = {
   width: '100%',

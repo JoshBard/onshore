@@ -17,13 +17,14 @@ const io = socketIo(server, {
 const PORT = 4000; // or your preferred port
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json());spawn(venvPath, [transmitPath, 'MSSN', 'START_MSSN']);
 
 // Path to the CSV file
 const telemtryFilePath = path.join(__dirname, 'telemetry_data', 'live_telem.csv');
 const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
 const transmitPath = path.join(__dirname, 'messaging', 'transmit.py');
 const statusPath = path.join(__dirname, 'messaging', 'connection_status.txt');
+const venvPath = path.join(__dirname, '..', '..', 'venv', 'bin', 'python3');
 
 /**
  * Only socket connection, used for WASD
@@ -239,7 +240,7 @@ app.post('/uploadWaypoints', (req, res) => {
  * 6) Transmit waypoints to onboard
  */
 app.post('/sendWaypoints', (req, res) => {
-    const process = spawn(transmitPath, ['WP']);
+    const process = spawn(venvPath, [transmitPath, 'WP']);
 
     let outputData = '';
     let errorData = '';
@@ -267,7 +268,7 @@ app.post('/sendWaypoints', (req, res) => {
  * 7) Start and stop manual mode
  */
 app.post('/start_manual', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'START_MAN']);
+  const process = spawn(venvPath, [transmitPath, 'MSSN', 'START_MSSN']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -279,7 +280,7 @@ app.post('/start_manual', (req, res) => {
 });
 
 app.post('/stop_manual', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'STOP_MAN']);
+  const process = spawn(venvPath, [transmitPath, 'MSSN', 'STOP_MAN']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -294,7 +295,7 @@ app.post('/stop_manual', (req, res) => {
  * 8) start and stop the mission 
  */
 app.post('/start_mission', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'START_MSSN']);
+  const process = spawn(venvPath, [transmitPath, 'MSSN', 'START_MSSN']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -306,7 +307,7 @@ app.post('/start_mission', (req, res) => {
 });
 
 app.post('/resume_manual', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'RESUME_MSSN']);
+  const process = spawn(venvPath, [transmitPath, 'MSSN', 'RESUME_MSSN']);
 
   process.on('close', (code) => {
     if (code !== 0) {
@@ -318,7 +319,7 @@ app.post('/resume_manual', (req, res) => {
 })
 
 app.post('/stop_mission', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'STOP_MSSN']);
+  const process = spawn(venvPath, [transmitPath, 'MSSN', 'STOP_MSSN']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -333,7 +334,7 @@ app.post('/stop_mission', (req, res) => {
  * 9) arm & disarm
  */
 app.post('/arm', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'ARM']);
+  const process = spawn(venvPath, [transmitPath, 'MSSN', 'ARM']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -345,7 +346,7 @@ app.post('/arm', (req, res) => {
 });
 
 app.post('/disarm', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'DISARM']);
+  const process = spawn(venvPath, [transmitPath, 'MSSN', 'DISARM']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -360,7 +361,7 @@ app.post('/disarm', (req, res) => {
  * 10) Return to home
  */
 app.post('/rtl', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'START_RTL']);
+  const process = spawn(venvPath, [transmitPath, 'MSSN', 'START_RTL']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -375,7 +376,7 @@ app.post('/rtl', (req, res) => {
  * 11) Toggle autonomous mode
  */
 app.post('/sailboat', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'SAIL']);
+  const process = spawn(venvPath, [transmitPath, 'MSSN', 'SAIL']);
 
   process.on('close', (code) => {
       if (code !== 0) {
@@ -387,7 +388,7 @@ app.post('/sailboat', (req, res) => {
 });
 
 app.post('/motor_boat', (req, res) => {
-  const process = spawn(transmitPath, ['MSSN', 'MOTOR']);
+  const process = spawn(venvPath, [transmitPath, 'MSSN', 'MOTOR']);
 
   process.on('close', (code) => {
       if (code !== 0) {
