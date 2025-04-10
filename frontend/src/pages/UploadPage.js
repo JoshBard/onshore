@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 
 // Adjust BASE_URL if hosting on Raspberry Pi: 'http://192.168.4.1:4000'
-const BASE_URL = process.env.REACT_APP_RPI;
+const BASE_URL = process.env.REACT_APP_ROUTER;
 
 function UploadPage() {
   const [isUploading, setIsUploading] = useState(false);

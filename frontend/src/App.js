@@ -10,7 +10,7 @@ import Manual from './pages/Manual';
 // Import the Header component
 import Header from './components/Header';
 
-const BASE_URL = process.env.REACT_APP_RPI;
+const BASE_URL = process.env.REACT_APP_ROUTER;
 
 function App() {
   const [connectionStatus, setConnectionStatus] = useState(null);
@@ -18,7 +18,7 @@ function App() {
   // Function to fetch the connection status from the backend
   const fetchConnectionStatus = async () => {
     try {
-      const res = await fetch(`${baseURL}/api/connection_status`);
+      const res = await fetch(`${BASE_URL}/api/connection_status`);
       if (res.ok) {
         const data = await res.json();
         setConnectionStatus(data.status);  // expected: "connected" or "disconnected"

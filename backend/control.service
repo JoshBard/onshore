@@ -6,6 +6,8 @@ After=network.target
 Type=simple
 User=jbardwick
 WorkingDirectory=/home/jbardwick/Desktop
+Environment="PATH=/home/jbardwick/Desktop/venv/bin:/usr/local/bin:/usr/bin:/bin"
+
 # Clean up any left-over processes
 ExecStartPre=/usr/bin/pkill -f "python3 receive.py"
 ExecStartPre=/usr/bin/pkill -f "npm"

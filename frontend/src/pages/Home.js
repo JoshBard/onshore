@@ -4,7 +4,7 @@ import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-const BASE_URL = process.env.REACT_APP_RPI;
+const BASE_URL = process.env.REACT_APP_ROUTER;
 const mapCenter = [41.55, -71.4];
 
 const mapContainerStyle = {

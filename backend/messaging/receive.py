@@ -28,6 +28,8 @@ CSV_HEADER = ["timestamp"] + EXPECTED_KEYS + ["sensor_data"]
 is_connected = False
 last_tlm_time = None
 
+connection_lock = threading.Lock()
+
 # --- Ensure the Telemetry CSV Exists ---
 def ensure_csv(file_path, header):
     # Create the directory if it doesn't exist.
@@ -126,18 +128,19 @@ def connection_monitor():
     global is_connected, last_tlm_time
     while True:
         time.sleep(10)
-        if last_tlm_time is not None:
-            elapsed = time.time() - last_tlm_time
-            if elapsed > 120:  # 2 minutes timeout
+        with connection_lock:
+            if last_tlm_time is not None:
+                elapsed = time.time() - last_tlm_time
+                if elapsed > 120:  # 2 minutes timeout
+                    if is_connected:
+                        is_connected = False
+                        update_status_file(False)
+                        log_message("INFO", "CONN", "No TLM received for 2 minutes; marked as disconnected.")
+            else:
                 if is_connected:
                     is_connected = False
                     update_status_file(False)
-                    log_message("INFO", "CONN", "No TLM received for 2 minutes; marked as disconnected.")
-        else:
-            if is_connected:
-                is_connected = False
-                update_status_file(False)
-                log_message("INFO", "CONN", "No TLM received; marked as disconnected.")
+                    log_message("INFO", "CONN", "No TLM received yet; marked as disconnected.")
 
 # --- Message Dispatcher ---
 def handle_message(packet, interface):
@@ -159,8 +162,9 @@ def handle_message(packet, interface):
         try:
             # Respond with the acknowledged message.
             interface.sendText("STARTUP_ACKNOWLEDGED", channelIndex=5, wantAck=True)
-            is_connected = True
-            last_tlm_time = time.time()
+            with connection_lock:
+                is_connected = True
+                last_tlm_time = time.time()
             update_status_file(True)
             log_message("SUCCESS", "STARTUP", "Sent STARTUP_ACKNOWLEDGED in response.")
         except Exception as e:
@@ -170,9 +174,11 @@ def handle_message(packet, interface):
     elif message.startswith("TLM"):
         # Remove the "TLM_" prefix.
         clean_message = message.replace("TLM_", "", 1)
-        last_tlm_time = time.time()
+        with connection_lock:
+            last_tlm_time = time.time()
+            is_connected = True
+        update_status_file(True)
         log_message("RECEIVED", "TLM", message)
-        # Process telemetry update inline.
         process_telem_update(clean_message)
     else:
         log_message("FAILED", "UNKNOWN", f"Unrecognized message format: {message}")
