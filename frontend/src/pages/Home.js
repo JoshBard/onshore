@@ -1,31 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import axios from 'axios';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import {
+  GoogleMap,
+  LoadScript,
+  Marker,
+  InfoWindow,
+} from '@react-google-maps/api';
 
 const BASE_URL = process.env.REACT_APP_ROUTER;
-const mapCenter = [41.55, -71.4];
-
+const mapCenter = { lat: 41.55, lng: -71.4 };
 const mapContainerStyle = {
   width: '100%',
   height: '600px',
 };
-
-// Custom marker icons
-const redIcon = new L.Icon({
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-});
-
-const greenIcon = new L.Icon({
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-});
 
 function Home() {
   const [points, setPoints] = useState([]);
@@ -33,6 +20,8 @@ function Home() {
   const [vesselTypeValue, setVesselTypeValue] = useState(0); // 0: Motor Boat; 1: Sailboat.
   const [showAdditionalControls, setShowAdditionalControls] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [mapApiKey, setMapApiKey] = useState(null);
+  const [selectedMarker, setSelectedMarker] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -47,13 +36,22 @@ function Home() {
     }
   };
 
+  const fetchMapKey = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/mapkey`);
+      setMapApiKey(response.data.key);
+    } catch (error) {
+      console.error('Error fetching Google Maps API key:', error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchMapKey();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // CSV-related handler
   const handleClearCsv = async () => {
     try {
       await axios.post(`${BASE_URL}/clear_telemetry_csv`);
@@ -121,7 +119,6 @@ function Home() {
     }
   };
 
-  // Handler for the vessel type slider.
   const handleVesselTypeSlider = async (e) => {
     const newValue = parseInt(e.target.value, 10);
     setVesselTypeValue(newValue);
@@ -142,21 +139,39 @@ function Home() {
     <div style={{ display: 'flex', flexDirection: 'row', margin: '20px' }}>
       <div style={{ flex: 2, marginRight: '20px' }}>
         <h1>Telemetry Tracker</h1>
-        <MapContainer center={mapCenter} zoom={3} style={mapContainerStyle}>
-          <TileLayer url="/map_tiles/{z}/{x}/{y}.png" tms={true} />
-          {points.slice(-25).map((pt, idx, arr) => (
-            <Marker 
-              key={idx} 
-              position={[pt.LAT, pt.LON]} 
-              icon={idx === arr.length - 1 ? greenIcon : redIcon}
+        {mapApiKey && (
+          <LoadScript googleMapsApiKey={mapApiKey}>
+            <GoogleMap
+              mapContainerStyle={mapContainerStyle}
+              center={mapCenter}
+              zoom={10}
             >
-              <Popup>
-                <b>Waypoint {points.length - 25 + idx + 1}</b><br />
-                Lat: {pt.LAT}, Lng: {pt.LON}
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
+              {points.slice(-25).map((pt, idx, arr) => (
+                <Marker
+                  key={idx}
+                  position={{ lat: pt.LAT, lng: pt.LON }}
+                  icon={{
+                    url: idx === arr.length - 1
+                      ? 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
+                      : 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                  }}
+                  onClick={() => setSelectedMarker({ idx, pt })}
+                />
+              ))}
+              {selectedMarker && (
+                <InfoWindow
+                  position={{ lat: selectedMarker.pt.LAT, lng: selectedMarker.pt.LON }}
+                  onCloseClick={() => setSelectedMarker(null)}
+                >
+                  <div>
+                    <b>Waypoint {points.length - 25 + selectedMarker.idx + 1}</b><br />
+                    Lat: {selectedMarker.pt.LAT}, Lng: {selectedMarker.pt.LON}
+                  </div>
+                </InfoWindow>
+              )}
+            </GoogleMap>
+          </LoadScript>
+        )}
 
         {/* Main Mission Controls */}
         <div style={{ marginTop: '2rem', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -175,7 +190,6 @@ function Home() {
           >
             {showAdditionalControls ? 'Hide Additional Controls' : 'Show Additional Controls'}
           </button>
-          {/* Info Button placed to the right of the Additional Controls toggle */}
           <button 
             onClick={() => setShowOverlay(true)} 
             style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}
@@ -184,7 +198,6 @@ function Home() {
           </button>
         </div>
 
-        {/* Collapsible Additional Controls Section */}
         {showAdditionalControls && (
           <div style={{ marginTop: '1rem', padding: '10px', border: '1px solid #ccc' }}>
             <h3>Additional Controls</h3>
