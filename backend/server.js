@@ -17,7 +17,7 @@ const io = socketIo(server, {
 const PORT = 4000; // or your preferred port
 
 app.use(cors());
-app.use(express.json());spawn(venvPath, [transmitPath, 'MSSN', 'START_MSSN']);
+app.use(express.json());
 
 // Path to the CSV file
 const telemtryFilePath = path.join(__dirname, 'telemetry_data', 'live_telem.csv');
