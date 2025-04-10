@@ -11,10 +11,22 @@ const { spawn } = require('child_process');
 
 const app = express();
 const server = http.createServer(app);
+// Define the allowed origins array:
+const allowedOrigins = [
+  `${BASE_URL}:3000`,
+  'http://onshore.local:3000'
+];
+
+// Attach Socket.io with the new CORS settings:
 const io = socketIo(server, {
-    cors: { origin: `${BASE_URL}:3000`, methods: ["GET", "POST"] }
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
 });
-const PORT = 4000; // or your preferred port
+
+const PORT = 4000;
 
 app.use(cors());
 app.use(express.json());
