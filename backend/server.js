@@ -48,7 +48,7 @@ io.on('connection', (socket) => {
     console.log(`Received command to send: ${command}`);
 
     // Spawn the shell script and pass the command as an argument
-    const shellProcess = spawn(transmitPath, ['MAN', command]);
+    const shellProcess = spawn(venvPath, [transmitPath, 'MAN', command]);
 
     // Handle stdout (output from the shell script)
     shellProcess.stdout.on('data', (data) => {
