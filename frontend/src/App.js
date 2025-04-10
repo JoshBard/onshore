@@ -7,8 +7,9 @@ import UploadPage from './pages/UploadPage';
 import MapPage from './pages/MapPage';
 import Manual from './pages/Manual';
 
-// Import the Header component
+// Import the Header component and our new GlobalAlert component
 import Header from './components/Header';
+import GlobalAlert from './components/GlobalAlert';
 
 const BASE_URL = process.env.REACT_APP_ROUTER;
 
@@ -61,6 +62,8 @@ function App() {
   // Once connected, render the main UI.
   return (
     <Router>
+      {/* GlobalAlert listens for alerts and triggers window.alert */}
+      <GlobalAlert />
       <Header /> {/* Header displayed on all pages */}
       <Routes>
         <Route path="/" element={<Home />} />

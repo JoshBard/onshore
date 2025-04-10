@@ -6,10 +6,17 @@ import subprocess
 import csv
 import random
 import threading
+import requests  # Updated import: use 'requests'
 from datetime import datetime
 from meshtastic.tcp_interface import TCPInterface
 from pubsub import pub
 from receive_logger import log_message
+
+# --- Load environment variable ---
+BASE_URL = os.environ.get("REACT_APP_TEST")
+if not BASE_URL:
+    print("Error: Environment variable REACT_APP_TEST not set")
+    sys.exit(1)
 
 # --- Configuration ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -142,6 +149,39 @@ def connection_monitor():
                     update_status_file(False)
                     log_message("INFO", "CONN", "No TLM received yet; marked as disconnected.")
 
+# --- Popup Helper Functions ---
+def filter_alert_message(message):
+    """
+    If the message begins with one of the specified prefixes (WP_, MAN_, MSSN_),
+    remove the header (i.e. everything up to and including the first colon)
+    and return the remaining text. If no colon is found, simply remove the prefix.
+    """
+    prefixes = ("WP_", "MAN_", "MSSN_")
+    for prefix in prefixes:
+        if message.startswith(prefix):
+            parts = message.split(":", 1)
+            if len(parts) > 1:
+                return parts[1].strip()
+            else:
+                return message[len(prefix):].strip()
+    return None
+
+def display_popup(message):
+    """
+    Posts the message for window.alert using a server POST request.
+    The server is expected to push this alert to the React frontend.
+    """
+    def popup():
+        # Build the endpoint URL using the BASE_URL from REACT_APP_TEST.
+        server_endpoint = f"{BASE_URL}:3000/api/alert"
+        try:
+            response = requests.post(server_endpoint, json={"message": message})
+            response.raise_for_status()
+        except requests.RequestException as e:
+            print(f"Error sending alert: {e}")
+    popup_thread = threading.Thread(target=popup)
+    popup_thread.start()
+
 # --- Message Dispatcher ---
 def handle_message(packet, interface):
     global is_connected, last_tlm_time
@@ -156,11 +196,10 @@ def handle_message(packet, interface):
         return
     mark_processed(msg_id)
 
-    # If we receive the startup request from the other node...
+    # Handle startup message.
     if message == "STARTUP_READY_TO_GO":
         log_message("RECEIVED", "STARTUP", message)
         try:
-            # Respond with the acknowledged message.
             interface.sendText("STARTUP_ACKNOWLEDGED", channelIndex=5, wantAck=True)
             with connection_lock:
                 is_connected = True
@@ -169,10 +208,8 @@ def handle_message(packet, interface):
             log_message("SUCCESS", "STARTUP", "Sent STARTUP_ACKNOWLEDGED in response.")
         except Exception as e:
             log_message("FAILED", "STARTUP", f"Error sending STARTUP_ACKNOWLEDGED: {e}")
-
-    # When we receive a telemetry update...
+    # Handle telemetry update.
     elif message.startswith("TLM"):
-        # Remove the "TLM_" prefix.
         clean_message = message.replace("TLM_", "", 1)
         with connection_lock:
             last_tlm_time = time.time()
@@ -180,6 +217,13 @@ def handle_message(packet, interface):
         update_status_file(True)
         log_message("RECEIVED", "TLM", message)
         process_telem_update(clean_message)
+    # Handle alert messages (for popups) from WP, MAN, or MSSN.
+    elif message.startswith("WP_") or message.startswith("MAN_") or message.startswith("MSSN_"):
+        alert_text = filter_alert_message(message)
+        if alert_text:
+            display_popup(alert_text)
+        else:
+            log_message("FAILED", "POPUP", f"Could not extract popup text from message: {message}")
     else:
         log_message("FAILED", "UNKNOWN", f"Unrecognized message format: {message}")
 

@@ -411,6 +411,17 @@ app.get('/api/connection_status', (req, res) => {
 });
 
 /**
+ * 13) Error messaging
+ */
+app.post('/api/alert', (req, res) => {
+  const { message } = req.body;
+  // Emit the message to connected WebSocket clients
+  io.emit('alert', message);
+  res.sendStatus(200);
+});
+
+
+/**
  * Start the server
  */
 server.listen(PORT, '0.0.0.0', () => {
