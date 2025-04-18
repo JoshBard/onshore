@@ -1,70 +1,49 @@
 #!/bin/bash
 #
-# switch-to-client.sh — switch from AP mode back to Wi‑Fi client
-# Usage: sudo ./switch-to-client.sh <SSID> <PASSWORD>
+# add-wifi.sh — append a new network to wpa_supplicant.conf and switch to it
+# Usage: sudo ./add-wifi.sh <SSID> <PASSWORD>
 
-set -e
+set -euo pipefail
 
-# ensure root
+# ——— 1) sanity checks ————————————————————————————————————
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Please run as root: sudo $0 <SSID> <PASSWORD>"
+  echo "Error: must run as root" >&2
   exit 1
 fi
-
-# args check
 if [ $# -ne 2 ]; then
-  echo "Usage: sudo $0 <SSID> <PASSWORD>"
+  echo "Usage: sudo $0 <SSID> <PASSWORD>" >&2
   exit 1
 fi
 
 SSID="$1"
 PSK="$2"
+CONF="/etc/wpa_supplicant/wpa_supplicant.conf"
 
-echo "→ Stopping AP services if present…"
-for svc in hostapd dnsmasq; do
-  if systemctl list-unit-files --type=service | grep -qw "${svc}.service"; then
-    echo "   • $svc: stopping & disabling"
-    systemctl stop "$svc"
-    systemctl disable "$svc"
-  else
-    echo "   • $svc: not installed, skipping"
-  fi
-done
+# ——— 2) backup current config ——————————————————————————
+cp "$CONF" "$CONF.bak.$(date +%Y%m%d%H%M%S)"
 
-echo "→ Re‑enabling DHCP client (dhcpcd)…"
-if systemctl list-unit-files --type=service | grep -qw "dhcpcd.service"; then
-  systemctl unmask dhcpcd.service
-  systemctl enable dhcpcd.service
-  systemctl restart dhcpcd.service
-else
-  echo "   • dhcpcd not found—make sure your network stack is configured appropriately"
-fi
+# ——— 3) append new network ————————————————————————————
+# uses wpa_passphrase to generate a hashed PSK entry
+{
+  echo ""
+  echo "# added on $(date): $SSID"
+  wpa_passphrase "$SSID" "$PSK"
+} >> "$CONF"
 
-echo "→ Writing new wpa_supplicant config…"
-cat > /etc/wpa_supplicant/wpa_supplicant.conf <<EOF
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-country=US
+chmod 600 "$CONF"
 
-network={
-    ssid="$SSID"
-    psk="$PSK"
-}
-EOF
+# ——— 4) reconfigure & bring up interface ————————————————————
+echo "Reconfiguring wpa_supplicant…"
+wpa_cli -i wlan0 reconfigure
 
-echo "→ Bringing up wlan0…"
+echo "Ensuring wlan0 is up…"
+rfkill unblock wifi || true
 ip link set wlan0 up
 
-echo "→ Restarting wpa_supplicant…"
-if systemctl list-units --all | grep -q "wpa_supplicant@wlan0.service"; then
-  systemctl restart wpa_supplicant@wlan0.service
-else
-  systemctl restart wpa_supplicant.service
-fi
+echo "Restarting DHCP client…"
+systemctl restart dhcpcd.service
 
-echo "→ Restarting DHCP on wlan0…"
-systemctl restart dhcpcd.service || true
-
-echo "✔ Done. Attempting to connect to '$SSID'…"
-ip addr show wlan0
-iwconfig wlan0
+# ——— 5) status check ————————————————————————————————
+echo
+echo "Current wlan0 status:"
+ip addr show wlan0 | grep -E 'inet |state'
