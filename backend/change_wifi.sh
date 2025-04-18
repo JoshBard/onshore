@@ -1,15 +1,17 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
-# wifi-switch.sh
-# Usage: sudo ./wifi-switch.sh <SSID> <PASSWORD>
+# switch-to-client.sh — switch from AP mode back to Wi‑Fi client
+# Usage: sudo ./switch-to-client.sh <SSID> <PASSWORD>
 
-set -euo pipefail
+set -e
 
+# 1) must run as root
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Must run as root: sudo $0 <SSID> <PASSWORD>"
+  echo "Please run as root: sudo $0 <SSID> <PASSWORD>"
   exit 1
 fi
 
+# 2) check args
 if [ $# -ne 2 ]; then
   echo "Usage: sudo $0 <SSID> <PASSWORD>"
   exit 1
@@ -18,39 +20,40 @@ fi
 SSID="$1"
 PSK="$2"
 
-# 1) Write the client config for wlan0
-WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-wlan0.conf"
-mkdir -p "$(dirname "$WPA_CONF")"
-cat > "$WPA_CONF" <<EOF
-country=US
-ctrl_interface=DIR=/run/wpa_supplicant GROUP=netdev
+echo "Stopping AP services…"
+systemctl stop hostapd dnsmasq
+
+echo "Disabling AP on boot…"
+systemctl disable hostapd dnsmasq
+
+echo "Re‑enabling DHCP client (dhcpcd)…"
+systemctl unmask dhcpcd.service
+systemctl enable dhcpcd.service
+systemctl restart dhcpcd.service
+
+echo "Writing /etc/wpa_supplicant/wpa_supplicant.conf…"
+cat > /etc/wpa_supplicant/wpa_supplicant.conf <<EOF
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
+country=US
 
 network={
     ssid="$SSID"
     psk="$PSK"
-    key_mgmt=WPA-PSK
 }
 EOF
-chmod 600 "$WPA_CONF"
-echo "→ Wrote client config: $WPA_CONF"
 
-# 2) Stop any AP‑mode service so wlan0 is free
-echo "→ Stopping AP mode (wpa_supplicant@ap0, hostapd, dnsmasq)…"
-systemctl stop wpa_supplicant@ap0.service 2>/dev/null || true
-systemctl stop hostapd                        2>/dev/null || true
-systemctl stop dnsmasq                        2>/dev/null || true
+echo "Bringing up wlan0…"
+ip link set wlan0 up
 
-# 3) Restart wpa_supplicant for wlan0
-echo "→ Restarting wpa_supplicant@wlan0.service…"
-# note: assumes you have systemd unit wpa_supplicant@wlan0.service enabled previously
-systemctl restart wpa_supplicant@wlan0.service
+echo "Reloading wpa_supplicant…"
+if systemctl list-units --full -all | grep -q "wpa_supplicant@wlan0.service"; then
+  systemctl restart wpa_supplicant@wlan0.service
+else
+  systemctl restart wpa_supplicant.service
+fi
 
-# 4) Let systemd‑networkd pick up the new DHCP on wlan0
-echo "→ Restarting systemd-networkd…"
-systemctl restart systemd-networkd.service
+echo "Re‑starting DHCP on wlan0…"
+systemctl restart dhcpcd.service
 
-# 5) Optional: wait a bit and show the new IP
-sleep 2
-IP=$(networkctl status wlan0 | awk '/Address: /{print $2; exit}')
-echo "wlan0 is now on SSID '$SSID' with IP $IP"
+echo "Done. Attempting to connect to '$SSID'…"
