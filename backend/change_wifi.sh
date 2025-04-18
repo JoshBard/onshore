@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# add-wifi.sh — append a new network to wpa_supplicant.conf and switch to it
-# Usage: sudo ./add-wifi.sh <SSID> <PASSWORD>
+# add-and-activate-network.sh — add Wi‑Fi via wpa_cli and switch to it
+# Usage: sudo ./add-and-activate-network.sh <SSID> <PASSWORD>
 
 set -euo pipefail
 
-# ——— 1) sanity checks ————————————————————————————————————
+# ——— sanity checks ————————————————————————————————
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Error: must run as root" >&2
+  echo "Error: must be run as root" >&2
   exit 1
 fi
 if [ $# -ne 2 ]; then
@@ -15,35 +15,44 @@ if [ $# -ne 2 ]; then
   exit 1
 fi
 
+IFACE="wlan0"
 SSID="$1"
 PSK="$2"
-CONF="/etc/wpa_supplicant/wpa_supplicant.conf"
 
-# ——— 2) backup current config ——————————————————————————
-cp "$CONF" "$CONF.bak.$(date +%Y%m%d%H%M%S)"
+# ——— make sure wpa_cli can talk to wpa_supplicant ——————————————
+# (adjust -p if you have a nonstandard ctrl_interface)
+CTRL_OPTS="-i ${IFACE}"
 
-# ——— 3) append new network ————————————————————————————
-# uses wpa_passphrase to generate a hashed PSK entry
-{
-  echo ""
-  echo "# added on $(date): $SSID"
-  wpa_passphrase "$SSID" "$PSK"
-} >> "$CONF"
+echo "→ Adding new network to wpa_supplicant…"
+NET_ID=$(wpa_cli ${CTRL_OPTS} add_network)
+echo "   network id = $NET_ID"
 
-chmod 600 "$CONF"
+echo "→ Setting SSID and PSK…"
+wpa_cli ${CTRL_OPTS} set_network "$NET_ID" ssid "\"${SSID}\""
+wpa_cli ${CTRL_OPTS} set_network "$NET_ID" psk "\"${PSK}\""
 
-# ——— 4) reconfigure & bring up interface ————————————————————
-echo "Reconfiguring wpa_supplicant…"
-wpa_cli -i wlan0 reconfigure
+echo "→ Enabling new network…"
+wpa_cli ${CTRL_OPTS} enable_network "$NET_ID"
 
-echo "Ensuring wlan0 is up…"
+echo "→ Saving configuration to disk…"
+wpa_cli ${CTRL_OPTS} save_config
+
+echo "→ Triggering reconfigure…"
+wpa_cli ${CTRL_OPTS} reconfigure
+
+# ——— ensure interface is up and request DHCP ——————————————————
+echo "→ Unblocking & bringing up ${IFACE}…"
 rfkill unblock wifi || true
-ip link set wlan0 up
+ip link set "${IFACE}" up
 
-echo "Restarting DHCP client…"
+echo "→ Restarting dhcpcd…"
 systemctl restart dhcpcd.service
 
-# ——— 5) status check ————————————————————————————————
+# ——— final status ——————————————————————————————————————
+sleep 2
 echo
-echo "Current wlan0 status:"
-ip addr show wlan0 | grep -E 'inet |state'
+echo "wpa_cli status:"
+wpa_cli ${CTRL_OPTS} status | grep -E 'wpa_state|ssid|id=' || true
+echo
+echo "IP address:"
+ip addr show "${IFACE}" | grep inet || echo "  (no address yet)"
