@@ -5,11 +5,13 @@
 
 set -e
 
+# 1) ensure running as root
 if [ "$(id -u)" -ne 0 ]; then
   echo "Run as root: sudo $0 <SSID> <PASSWORD>"
   exit 1
 fi
 
+# 2) check args
 if [ $# -ne 2 ]; then
   echo "Usage: sudo $0 <SSID> <PASSWORD>"
   exit 1
@@ -17,12 +19,26 @@ fi
 
 SSID="$1"
 PSK="$2"
-WPA_CONF="/etc/wpa_supplicant/wpa_supplicant.conf"
+WPA_DIR="/etc/wpa_supplicant"
+WPA_CONF="$WPA_DIR/wpa_supplicant.conf"
 
-# Backup existing Wi‑Fi config
+# 3) ensure wpa_supplicant directory & config exist
+if [ ! -d "$WPA_DIR" ]; then
+  mkdir -p "$WPA_DIR"
+fi
+
+if [ ! -f "$WPA_CONF" ]; then
+  touch "$WPA_CONF"
+  chmod 600 "$WPA_CONF"
+fi
+
+echo "Using wpa_supplicant config: $WPA_CONF"
+
+# 4) backup existing config
 cp "$WPA_CONF" "${WPA_CONF}.bak.$(date +%Y%m%d%H%M%S)"
+echo "Backed up old config to ${WPA_CONF}.bak.*"
 
-# Overwrite wpa_supplicant.conf
+# 5) write new network block
 cat > "$WPA_CONF" <<EOF
 country=US
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
@@ -35,38 +51,29 @@ network={
     priority=0
 }
 EOF
+echo "Wrote new network block for SSID '$SSID'"
 
-# Apply changes
+# 6) stop hotspot services if running
+echo "Stopping hotspot services (hostapd, dnsmasq) if present..."
+systemctl stop hostapd    2>/dev/null || true
+systemctl stop dnsmasq    2>/dev/null || true
+
+# 7) reload wpa_supplicant
+echo "Reconfiguring wpa_supplicant on wlan0..."
 wpa_cli -i wlan0 reconfigure
-systemctl restart dhcpcd
 
-echo "Switched Wi‑Fi to '$SSID'"
-
-# Determine the Pi's new IP on wlan0 (first address)
-IP=$(hostname -I | awk '{print $1}')
-if [ -z "$IP" ]; then
-  echo "Warning: could not determine wlan0 IP; skipping .env updates"
-  exit 0
+# 8) renew DHCP lease or cycle interface
+echo "Bringing up DHCP on wlan0..."
+if command -v dhcpcd >/dev/null 2>&1; then
+  dhcpcd wlan0
+elif command -v dhclient >/dev/null 2>&1; then
+  dhclient -r wlan0 || true
+  dhclient wlan0
+else
+  echo "No DHCP client found—cycling wlan0 link"
+  ip link set wlan0 down
+  sleep 1
+  ip link set wlan0 up
 fi
 
-# List of .env files to update
-ENV_FILES=(
-  "$PWD/.env"
-  "$PWD/../frontend/.env"
-)
-
-for ENV_FILE in "${ENV_FILES[@]}"; do
-  if [ -f "$ENV_FILE" ]; then
-    echo "Updating $ENV_FILE → REACT_APP_ROUTER=http://$IP"
-    # backup .env
-    cp "$ENV_FILE" "${ENV_FILE}.bak.$(date +%Y%m%d%H%M%S)"
-    # replace or append
-    if grep -q '^REACT_APP_ROUTER=' "$ENV_FILE"; then
-      sed -i -E "s|^REACT_APP_ROUTER=.*$|REACT_APP_ROUTER=http://$IP|" "$ENV_FILE"
-    else
-      echo "REACT_APP_ROUTER=http://$IP" >> "$ENV_FILE"
-    fi
-  else
-    echo "No .env at $ENV_FILE; skipping"
-  fi
-done
+echo "Wi‑Fi switch to '$SSID' complete."
