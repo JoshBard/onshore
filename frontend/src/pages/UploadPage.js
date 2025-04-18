@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 
-// Adjust BASE_URL if hosting on Raspberry Pi: 'http://192.168.4.1:4000'
 const BASE_URL = process.env.REACT_APP_ROUTER;
+const PORT = 4000;
 
 function UploadPage() {
   const [isUploading, setIsUploading] = useState(false);
@@ -29,9 +29,9 @@ function UploadPage() {
       if (waypoints.length > 0) {
         setIsUploading(true);
         try {
-          await axios.post(`${BASE_URL}/uploadWaypoints`, { waypoints });
+          await axios.post(`${BASE_URL}:${PORT}/uploadWaypoints`, { waypoints });
           alert('Waypoints uploaded successfully.');
-          await axios.post(`${BASE_URL}/sendWaypoints`);
+          await axios.post(`${BASE_URL}:${PORT}/sendWaypoints`);
           alert('Waypoints sent successfully.');
         } catch (error) {
           console.error('Error uploading waypoints:', error);
@@ -48,7 +48,7 @@ function UploadPage() {
   const handleClearCsv = async () => {
     setIsClearing(true);
     try {
-      const response = await axios.post(`${BASE_URL}/clear_waypoints_csv`);
+      const response = await axios.post(`${BASE_URL}:${PORT}/clear_waypoints_csv`);
       alert(response.data); // e.g., 'Waypoints cleared successfully.'
     } catch (error) {
       console.error('Error clearing waypoints:', error);

@@ -4,7 +4,8 @@ import { io } from 'socket.io-client';
 
 // Adjust BASE_URL as needed
 const BASE_URL = process.env.REACT_APP_ROUTER;
-const socket = io(`${BASE_URL}`); // WebSocket connection to backend
+const PORT = 4000;
+const socket = io(`${BASE_URL}:${PORT}`); // WebSocket connection to backend
 
 const ManualControl = () => {
   const [showOverlay, setShowOverlay] = useState(false);
@@ -44,7 +45,7 @@ const ManualControl = () => {
   // Function to start manual mode
   const startManualMode = async () => {
     try {
-      await axios.post(`${BASE_URL}/start_manual`);
+      await axios.post(`${BASE_URL}:${PORT}/start_manual`);
       console.log('Manual mode started');
     } catch (error) {
       console.error('Error starting manual mode:', error);
@@ -54,7 +55,7 @@ const ManualControl = () => {
   // Function to stop manual mode
   const stopManualMode = async () => {
     try {
-      await axios.post(`${BASE_URL}/stop_manual`);
+      await axios.post(`${BASE_URL}:${PORT}/stop_manual`);
       console.log('Manual mode stopped');
     } catch (error) {
       console.error('Error stopping manual mode:', error);

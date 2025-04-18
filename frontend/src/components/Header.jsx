@@ -22,6 +22,9 @@ const Header = () => {
       <Link to="/manual" style={{ margin: '0 10px', textDecoration: 'none' }}>
         <button style={{ padding: '8px 16px', cursor: 'pointer' }}>Manual Control Mode</button>
       </Link>
+      <Link to="/wifi" style={{ margin: '0 10px', textDecoration: 'none' }}>
+        <button style={{ padding: '8px 16px', cursor: 'pointer' }}>Change Network</button>
+      </Link>
     </header>
   );
 };

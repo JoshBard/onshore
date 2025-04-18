@@ -1,4 +1,4 @@
-require('dotenv').config(); // Load environment variables, e.g. GOOGLE_MAPS_API_KEY, BASE_URL
+require('dotenv').config();
 const BASE_URL = process.env.REACT_APP_ROUTER;
 
 const express = require('express');
@@ -433,6 +433,30 @@ app.post('/api/alert', (req, res) => {
   res.sendStatus(200);
 });
 
+/**
+ * 14) Change wifi network
+ */
+app.post('/changewifi', (req, res) => {
+  const { ssid, password } = req.body;
+  if (!ssid || !password) {
+    return res
+      .status(400)
+      .json({ success: false, error: 'SSID and password are required' });
+  }
+
+  const scriptPath = path.join(__dirname, 'change_wifi.sh');
+
+  execFile(scriptPath, [ssid, password], (err, stdout, stderr) => {
+    if (err) {
+      console.error('change_wifi.sh failed:', stderr || err.message);
+      return res
+        .status(500)
+        .json({ success: false, error: (stderr || err.message).trim() });
+    }
+    // success
+    res.json({ success: true });
+  });
+});
 
 /**
  * Start the server

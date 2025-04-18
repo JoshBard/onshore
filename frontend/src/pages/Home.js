@@ -9,6 +9,7 @@ import {
 import './Home.css';
 
 const BASE_URL = process.env.REACT_APP_ROUTER;
+const PORT = 4000;
 const mapCenter = { lat: 41.55, lng: -71.4 };
 const mapContainerStyle = {
   width: '100%',
@@ -26,7 +27,7 @@ function Home() {
 
   const fetchData = async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/points`);
+      const response = await axios.get(`${BASE_URL}:${PORT}/points`);
       if (Array.isArray(response.data)) {
         setPoints(response.data);
       } else {
@@ -39,7 +40,7 @@ function Home() {
 
   const fetchMapKey = async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/api/mapkey`);
+      const response = await axios.get(`${BASE_URL}:${PORT}/api/mapkey`);
       setMapApiKey(response.data.key);
     } catch (error) {
       console.error('Error fetching Google Maps API key:', error);
@@ -55,7 +56,7 @@ function Home() {
 
   const handleClearCsv = async () => {
     try {
-      await axios.post(`${BASE_URL}/clear_telemetry_csv`);
+      await axios.post(`${BASE_URL}:${PORT}/clear_telemetry_csv`);
       setPoints([]);
       console.log('Telemetry CSV cleared');
     } catch (error) {
@@ -65,7 +66,7 @@ function Home() {
 
   const handleStartMission = async () => {
     try {
-      await axios.post(`${BASE_URL}/start_mission`);
+      await axios.post(`${BASE_URL}:${PORT}/start_mission`);
       setMissionStatus('running');
       console.log('Mission started');
     } catch (error) {
@@ -75,7 +76,7 @@ function Home() {
 
   const handleResumeMission = async () => {
     try {
-      await axios.post(`${BASE_URL}/resume_mission`);
+      await axios.post(`${BASE_URL}:${PORT}/resume_mission`);
       setMissionStatus('running');
       console.log('Mission resumed');
     } catch (error) {
@@ -85,7 +86,7 @@ function Home() {
 
   const handleStopMission = async () => {
     try {
-      await axios.post(`${BASE_URL}/stop_mission`);
+      await axios.post(`${BASE_URL}:${PORT}/stop_mission`);
       setMissionStatus('stopped');
       console.log('Mission stopped');
     } catch (error) {
@@ -95,7 +96,7 @@ function Home() {
 
   const handleArm = async () => {
     try {
-      await axios.post(`${BASE_URL}/arm`);
+      await axios.post(`${BASE_URL}:${PORT}/arm`);
       console.log('System armed');
     } catch (error) {
       console.error('Error arming system:', error);
@@ -104,7 +105,7 @@ function Home() {
 
   const handleDisarm = async () => {
     try {
-      await axios.post(`${BASE_URL}/disarm`);
+      await axios.post(`${BASE_URL}:${PORT}/disarm`);
       console.log('System disarmed');
     } catch (error) {
       console.error('Error disarming system:', error);
@@ -113,7 +114,7 @@ function Home() {
 
   const handleReturnHome = async () => {
     try {
-      await axios.post(`${BASE_URL}/rtl`);
+      await axios.post(`${BASE_URL}:${PORT}/rtl`);
       console.log('Returned to Home via /rtl endpoint');
     } catch (error) {
       console.error('Error returning to home:', error);
@@ -125,10 +126,10 @@ function Home() {
     setVesselTypeValue(newValue);
     try {
       if (newValue === 0) {
-        await axios.post(`${BASE_URL}/motor_boat`);
+        await axios.post(`${BASE_URL}:${PORT}/motor_boat`);
         console.log("Motor Boat selected");
       } else {
-        await axios.post(`${BASE_URL}/sailboat`);
+        await axios.post(`${BASE_URL}:${PORT}/sailboat`);
         console.log("Sailboat selected");
       }
     } catch (error) {
@@ -230,7 +231,7 @@ function Home() {
         </div>
 
         <div style={{ marginTop: '10px' }}>
-          <a href={`${BASE_URL}/download_telemetry`} download>
+          <a href={`${BASE_URL}:${PORT}/download_telemetry`} download>
             <button className="interactive-button">Download Telemetry</button>
           </a>
           <button onClick={handleClearCsv} className="interactive-button" style={{ marginLeft: '10px' }}>

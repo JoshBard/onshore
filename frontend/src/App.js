@@ -6,12 +6,14 @@ import Home from './pages/Home';
 import UploadPage from './pages/UploadPage';
 import MapPage from './pages/MapPage';
 import Manual from './pages/Manual';
+import Wifi from './pages/Wifi';
 
 // Import the Header component and our new GlobalAlert component
 import Header from './components/Header';
 import GlobalAlert from './components/GlobalAlert';
 
 const BASE_URL = process.env.REACT_APP_ROUTER;
+const PORT = 4000;
 
 function App() {
   const [connectionStatus, setConnectionStatus] = useState(null);
@@ -19,7 +21,7 @@ function App() {
   // Function to fetch the connection status from the backend
   const fetchConnectionStatus = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/api/connection_status`);
+      const res = await fetch(`${BASE_URL}:${PORT}/api/connection_status`);
       if (res.ok) {
         const data = await res.json();
         setConnectionStatus(data.status);  // expected: "connected" or "disconnected"
@@ -70,6 +72,7 @@ function App() {
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/manual" element={<Manual />} />
+        <Route path="/wifi" element={<Wifi />} />
       </Routes>
     </Router>
   );
