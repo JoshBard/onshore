@@ -3,17 +3,17 @@
 # wifi-switch.sh
 # Usage: sudo ./wifi-switch.sh <SSID> <PASSWORD>
 
-set -e
+set -euo pipefail
 
-# 1) ensure running as root
+# 1) Ensure root
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Run as root: sudo $0 <SSID> <PASSWORD>"
+  echo "Run as root: sudo $0 <SSID> <PASSWORD>" >&2
   exit 1
 fi
 
-# 2) check args
+# 2) Check args
 if [ $# -ne 2 ]; then
-  echo "Usage: sudo $0 <SSID> <PASSWORD>"
+  echo "Usage: sudo $0 <SSID> <PASSWORD>" >&2
   exit 1
 fi
 
@@ -22,28 +22,17 @@ PSK="$2"
 WPA_DIR="/etc/wpa_supplicant"
 WPA_CONF="$WPA_DIR/wpa_supplicant.conf"
 
-# 3) ensure wpa_supplicant directory exists
-if [ ! -d "$WPA_DIR" ]; then
-  mkdir -p "$WPA_DIR"
-fi
-
-# 4) ensure config file exists (touch again just before editing)
-if [ ! -f "$WPA_CONF" ]; then
-  touch "$WPA_CONF"
-  chmod 600 "$WPA_CONF"
-fi
-
-echo "Using wpa_supplicant config: $WPA_CONF"
-
-# 5) backup existing config
-cp "$WPA_CONF" "${WPA_CONF}.bak.$(date +%Y%m%d%H%M%S)"
-echo "Backed up old config to ${WPA_CONF}.bak.*"
-
-# 6) re‑ensure the file is present before we overwrite it
+# 3) Ensure config directory & file
+mkdir -p "$WPA_DIR"
 touch "$WPA_CONF"
 chmod 600 "$WPA_CONF"
+echo "Using wpa_supplicant config: $WPA_CONF"
 
-# 7) write new network block
+# 4) Backup existing config
+cp "$WPA_CONF" "${WPA_CONF}.bak.$(date +%Y%m%d%H%M%S)"
+echo "Backed up old config"
+
+# 5) Write new network block
 cat > "$WPA_CONF" <<EOF
 country=US
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
@@ -58,16 +47,32 @@ network={
 EOF
 echo "Wrote new network block for SSID '$SSID'"
 
-# 8) stop hotspot services if running
+# 6) Stop hotspot services if running
 echo "Stopping hotspot services (hostapd, dnsmasq) if present..."
-systemctl stop hostapd    2>/dev/null || true
-systemctl stop dnsmasq    2>/dev/null || true
+systemctl stop hostapd 2>/dev/null || true
+systemctl stop dnsmasq 2>/dev/null || true
 
-# 9) reload wpa_supplicant
-echo "Reconfiguring wpa_supplicant on wlan0..."
-wpa_cli -i wlan0 reconfigure || echo "wpa_cli reconfigure failed, proceeding anyway"
+# 7) Try to reconfigure wpa_supplicant
+echo "Attempting wpa_cli reconfigure..."
+if wpa_cli -i wlan0 reconfigure; then
+  echo "wpa_cli reconfigure succeeded"
+else
+  echo "wpa_cli reconfigure failed → restarting wpa_supplicant service"
+  # 7a) systemd-managed service
+  if systemctl list-units --full -all | grep -q 'wpa_supplicant@wlan0.service'; then
+    systemctl restart wpa_supplicant@wlan0.service
+  # 7b) generic wpa_supplicant service
+  elif systemctl list-units --full -all | grep -q 'wpa_supplicant.service'; then
+    systemctl restart wpa_supplicant.service
+  else
+    # 7c) fallback: launch wpa_supplicant directly
+    echo "Starting wpa_supplicant manually"
+    pkill wpa_supplicant 2>/dev/null || true
+    wpa_supplicant -B -i wlan0 -c "$WPA_CONF"
+  fi
+fi
 
-# 10) renew DHCP lease or cycle interface
+# 8) Renew DHCP lease or cycle interface
 echo "Bringing up DHCP on wlan0..."
 if command -v dhcpcd >/dev/null 2>&1; then
   dhcpcd wlan0
@@ -81,4 +86,4 @@ else
   ip link set wlan0 up
 fi
 
-echo "Wi‑Fi switch to '$SSID' complete."
+echo "Wi‑Fi switched to '$SSID' successfully."
