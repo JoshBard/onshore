@@ -440,6 +440,8 @@ app.post('/api/alert', (req, res) => {
 /**
  * 14) Change wifi network
  */
+const changeWifiDir  = path.dirname(changeWifiPath);
+
 app.post('/changewifi', (req, res) => {
   const { ssid, password } = req.body;
   if (!ssid || !password) {
@@ -448,17 +450,29 @@ app.post('/changewifi', (req, res) => {
       .json({ success: false, error: 'SSID and password are required' });
   }
 
+  console.log('– running changewifi –');
+  console.log('script exists:', fs.existsSync(changeWifiPath));
+  console.log('mode:', (fs.statSync(changeWifiPath).mode & 0o777).toString(8));
+  console.log('cwd will be:', changeWifiDir);
+
   execFile(
     'sudo',
     ['-n', changeWifiPath, ssid, password],
+    {
+      cwd: changeWifiDir,
+      env: process.env,
+      timeout: 15_000,
+      maxBuffer: 1024 * 512
+    },
     (err, stdout, stderr) => {
+      console.log('→ execFile callback:', { err, stdout, stderr });
       if (err) {
-        console.error('change_wifi.sh failed:', stderr || err.message);
+        console.error('change_wifi.sh failed:', err.code, stderr || err.message);
         return res
           .status(500)
           .json({ success: false, error: (stderr || err.message).trim() });
       }
-      res.json({ success: true, output: stdout.trim() });
+      return res.json({ success: true, output: stdout.trim() });
     }
   );
 });
