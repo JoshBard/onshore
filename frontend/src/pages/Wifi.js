@@ -11,7 +11,7 @@ export default function WifiConfigPage() {
     e.preventDefault();
     setStatus('Changing network…');
     try {
-      const { data } = await axios.post('/changewifi', { ssid, password });
+      const { data } = await axios.post(`/changewifi`, { ssid, password });
       if (data.success) {
         setStatus('Network change requested. Device will reconnect shortly. Refresh the page in a moment.');
       } else {

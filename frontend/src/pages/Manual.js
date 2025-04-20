@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-// Adjust BASE_URL as needed
-const BASE_URL = process.env.REACT_APP_ROUTER;
-const PORT = 4000;
-const socket = io(`${BASE_URL}:${PORT}`); // WebSocket connection to backend
+const socket = io()
 
 const ManualControl = () => {
   const [showOverlay, setShowOverlay] = useState(false);
+  const [lastCommand, setLastCommand] = useState('');
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -32,21 +30,23 @@ const ManualControl = () => {
         default:
           return;
       }
+
       // Send command via WebSocket
       socket.emit('keypress', command);
+
+      // Show acknowledgement
+      setLastCommand(command);
+      setTimeout(() => setLastCommand(''), 500); // clear after 0.5s
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // Function to start manual mode
   const startManualMode = async () => {
     try {
-      await axios.post(`${BASE_URL}:${PORT}/start_manual`);
-      console.log('Manual mode started');
+      await axios.post(`/start_manual`);
     } catch (error) {
       console.error('Error starting manual mode:', error);
     }
@@ -55,15 +55,14 @@ const ManualControl = () => {
   // Function to stop manual mode
   const stopManualMode = async () => {
     try {
-      await axios.post(`${BASE_URL}:${PORT}/stop_manual`);
-      console.log('Manual mode stopped');
+      await axios.post(`/stop_manual`);
     } catch (error) {
       console.error('Error stopping manual mode:', error);
     }
   };
 
   return (
-    <div style={{ textAlign: 'center', marginTop: '50px' }}>
+    <div style={{ textAlign: 'center', marginTop: '50px', position: 'relative' }}>
       <h1>Emergency Control</h1>
       <p>Press WASD to send movement commands in real-time.</p>
 
@@ -102,6 +101,27 @@ const ManualControl = () => {
         </button>
       </div>
 
+      {/* Acknowledgement Toast */}
+      {lastCommand && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '150px',              // closer to the buttons
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '6px',
+            fontSize: '18px',          // larger text
+            pointerEvents: 'none',
+            zIndex: 9999
+          }}
+        >
+          {lastCommand} sent
+        </div>
+      )}
+
       {/* Overlay for Information */}
       {showOverlay && (
         <div
@@ -124,7 +144,8 @@ const ManualControl = () => {
               background: 'white',
               padding: '20px',
               borderRadius: '4px',
-              textAlign: 'left'
+              textAlign: 'left',
+              maxWidth: '90%'
             }}
           >
             <ol>
@@ -137,7 +158,6 @@ const ManualControl = () => {
               </li>
               <li>A &amp; D control the rudder, there are nine angles of articulation that you can use.</li>
               <li>Spacebar returns both throttle and rudder to default, e.g. stopped and center aligned.</li>
-              <li>Arm &amp; Disarm are automatically handled when starting/stopping the mission but can be used if needed.</li>
               <li>Start manual is equivalent to stop mission, called when transitioning from auto to manual.</li>
               <li>Stop manual is equivalent to resume, called when transitioning from manual to auto.
                 <div style={{textAlign: 'center', marginTop: '2px', marginBottom: '2px', fontStyle: 'italic'}}>
@@ -151,4 +171,5 @@ const ManualControl = () => {
     </div>
   );
 };
+
 export default ManualControl;

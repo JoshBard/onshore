@@ -1,5 +1,4 @@
 require('dotenv').config();
-const BASE_URL = process.env.REACT_APP_ROUTER;
 
 const express = require('express');
 const http = require('http');
@@ -7,26 +6,12 @@ const socketIo = require('socket.io');
 const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
+const os = require('os');
 
 const app = express();
 const server = http.createServer(app);
-// Define the allowed origins array:
-const allowedOrigins = [
-  `${BASE_URL}:3000`,
-  'http://onshore.local:3000'
-];
-
-// Attach Socket.io with the new CORS settings:
-const io = socketIo(server, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
-});
-
-const PORT = 4000;
+const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -37,6 +22,27 @@ const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
 const transmitPath = path.join(__dirname, 'messaging', 'transmit.py');
 const statusPath = path.join(__dirname, 'messaging', 'connection_status.txt');
 const venvPath = path.join(__dirname, '..', '..', 'venv', 'bin', 'python3');
+const changeWifiPath = path.join(__dirname, './change_wifi.sh');
+
+// Instantiate socket
+const io = socketIo(server, {
+  cors: {
+    origin: true,
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
+
+// Get local IP address
+function getLocalIPv4() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) return net.address;
+    }
+  }
+  return '0.0.0.0';
+}
 
 /**
  * Only socket connection, used for WASD
@@ -71,8 +77,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// Serve static files if desired (e.g. your frontend)
-app.use(express.static(path.join(__dirname, '../frontend/public')));
 
 /**
  * 1) Return the Google Maps API key (from .env)
@@ -444,24 +448,36 @@ app.post('/changewifi', (req, res) => {
       .json({ success: false, error: 'SSID and password are required' });
   }
 
-  const scriptPath = path.join(__dirname, 'change_wifi.sh');
-
-  execFile(scriptPath, [ssid, password], (err, stdout, stderr) => {
-    if (err) {
-      console.error('change_wifi.sh failed:', stderr || err.message);
-      return res
-        .status(500)
-        .json({ success: false, error: (stderr || err.message).trim() });
+  execFile(
+    'sudo',
+    ['-n', changeWifiPath, ssid, password],
+    (err, stdout, stderr) => {
+      if (err) {
+        console.error('change_wifi.sh failed:', stderr || err.message);
+        return res
+          .status(500)
+          .json({ success: false, error: (stderr || err.message).trim() });
+      }
+      res.json({ success: true, output: stdout.trim() });
     }
-    // success
-    res.json({ success: true });
-  });
+  );
+});
+
+// ————————————————————————————————
+// Now finally: serve React’s production build & catch‑all
+// ————————————————————————————————
+app.use(express.static(path.join(__dirname, '../frontend/build')));
+
+// Only if no API/static route matched:
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
 });
 
 /**
  * Start the server
  */
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on ${BASE_URL}:${PORT}`);
+  console.log(
+    `Server is running on http://${getLocalIPv4()}:${PORT}`
+  );
 });
-// For Raspberry Pi AP: console.log(`Server is running on ${BASE_URL}:${PORT}`);

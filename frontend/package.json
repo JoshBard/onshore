@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:4000",
   "dependencies": {
     "@react-google-maps/api": "^2.20.5",
     "@testing-library/jest-dom": "^5.17.0",

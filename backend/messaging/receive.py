@@ -6,7 +6,8 @@ import subprocess
 import csv
 import random
 import threading
-import requests  # Updated import: use 'requests'
+import requests 
+import socket
 from datetime import datetime
 from meshtastic.tcp_interface import TCPInterface
 from pubsub import pub
@@ -17,10 +18,19 @@ from pathlib import Path
 # --- Load environment variable ---
 env_path = Path(__file__).resolve().parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
-BASE_URL = os.environ.get("REACT_APP_ROUTER")
-if not BASE_URL:
-    print("Error: Environment variable REACT_APP not set")
-    sys.exit(1)
+
+# --- Dynamically retrieve IP ---
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # The IP address here doesn't need to be reachable
+        s.connect(("10.255.255.255", 1))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return f"http://{ip}"
 
 # --- Configuration ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -176,8 +186,8 @@ def display_popup(message):
     The server is expected to push this alert to the React frontend.
     """
     def popup():
-        # Build the endpoint URL using the BASE_URL from REACT_APP_TEST.
-        server_endpoint = f"{BASE_URL}:3000/api/alert"
+        baseURL = get_local_ip()
+        server_endpoint = f"{baseURL}:3000/api/alert"
         try:
             response = requests.post(server_endpoint, json={"message": message})
             response.raise_for_status()

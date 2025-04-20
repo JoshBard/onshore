@@ -12,19 +12,16 @@ import Wifi from './pages/Wifi';
 import Header from './components/Header';
 import GlobalAlert from './components/GlobalAlert';
 
-const BASE_URL = process.env.REACT_APP_ROUTER;
-const PORT = 4000;
-
 function App() {
   const [connectionStatus, setConnectionStatus] = useState(null);
 
   // Function to fetch the connection status from the backend
   const fetchConnectionStatus = async () => {
     try {
-      const res = await fetch(`${BASE_URL}:${PORT}/api/connection_status`);
+      const res = await fetch('/api/connection_status');
       if (res.ok) {
         const data = await res.json();
-        setConnectionStatus(data.status);  // expected: "connected" or "disconnected"
+        setConnectionStatus(data.status);
       } else {
         console.error('Error fetching connection status:', res.statusText);
         setConnectionStatus('disconnected');
