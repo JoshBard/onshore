@@ -440,7 +440,6 @@ app.post('/api/alert', (req, res) => {
 /**
  * 14) Change wifi network
  */
-const changeWifiDir  = path.dirname(changeWifiPath);
 
 app.post('/changewifi', (req, res) => {
   const { ssid, password } = req.body;
@@ -453,13 +452,11 @@ app.post('/changewifi', (req, res) => {
   console.log('– running changewifi –');
   console.log('script exists:', fs.existsSync(changeWifiPath));
   console.log('mode:', (fs.statSync(changeWifiPath).mode & 0o777).toString(8));
-  console.log('cwd will be:', changeWifiDir);
 
   execFile(
     'sudo',
     ['-n', changeWifiPath, ssid, password],
     {
-      cwd: changeWifiDir,
       env: process.env,
       timeout: 15_000,
       maxBuffer: 1024 * 512
