@@ -24,6 +24,20 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 PROCESSED_IDS_FILE = os.path.join(SCRIPT_DIR, ".processed_msg_ids")
 SOURCE_ID = "!eb15a9fe"
 
+# --- IP finder ---
+def get_local_ip():
+    """Return the current machine’s primary IPv4 address on the LAN."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # the address here doesn’t actually have to be reachable
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return ip
+
 # File for exposing connection status to the UI.
 STATUS_FILE = os.path.join(SCRIPT_DIR, "connection_status.txt")
 
