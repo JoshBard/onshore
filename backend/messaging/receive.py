@@ -19,19 +19,6 @@ from pathlib import Path
 env_path = Path(__file__).resolve().parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-# --- Dynamically retrieve IP ---
-def get_local_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # The IP address here doesn't need to be reachable
-        s.connect(("10.255.255.255", 1))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = "127.0.0.1"
-    finally:
-        s.close()
-    return f"http://{ip}"
-
 # --- Configuration ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 PROCESSED_IDS_FILE = os.path.join(SCRIPT_DIR, ".processed_msg_ids")
@@ -170,7 +157,7 @@ def filter_alert_message(message):
     remove the header (i.e. everything up to and including the first colon)
     and return the remaining text. If no colon is found, simply remove the prefix.
     """
-    prefixes = ("WP_", "MAN_", "MSSN_")
+    prefixes = ("STAT_",)
     for prefix in prefixes:
         if message.startswith(prefix):
             parts = message.split(":", 1)
@@ -232,7 +219,7 @@ def handle_message(packet, interface):
         log_message("RECEIVED", "TLM", message)
         process_telem_update(clean_message)
     # Handle alert messages (for popups) from WP, MAN, or MSSN.
-    elif message.startswith("WP_") or message.startswith("MAN_") or message.startswith("MSSN_"):
+    elif message.startswith("STAT_"):
         alert_text = filter_alert_message(message)
         if alert_text:
             display_popup(alert_text)
