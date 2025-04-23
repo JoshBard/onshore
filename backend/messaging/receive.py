@@ -107,7 +107,7 @@ def display_popup(text: str):
         log_message("STAT","RECEIVED","Connection lost")
     threading.Thread(target=post, daemon=True).start()
 
-def handle_message(packet, iface):
+def handle_message(packet, interface=None):
     global is_connected, last_tlm_time
 
     if packet.get("fromId","") != config.SOURCE_ID:
