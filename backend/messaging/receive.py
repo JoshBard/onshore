@@ -1,33 +1,33 @@
+#!/usr/bin/env python3
 import time
 import csv
 import random
 import threading
-import requests
 import socket
 from datetime import datetime
+
 from pubsub import pub
+import meshtastic.tcp_interface
 
 import config
-from receive_logger import log_message
 
-# Reuse the singleton interface
-INTERFACE = config.INTERFACE
+# Placeholder for the TCPInterface once we instantiate it below
+INTERFACE = None
 
 # Connection tracking
-is_connected   = False
-last_tlm_time  = None
+is_connected = False
+last_tlm_time = None
 connection_lock = threading.Lock()
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
+        return s.getsockname()[0]
     except:
-        ip = "127.0.0.1"
+        return "127.0.0.1"
     finally:
         s.close()
-    return ip
 
 def update_status_file(status: bool):
     config.STATUS_FILE.write_text("connected" if status else "disconnected")
@@ -37,10 +37,6 @@ def ensure_csv():
     if not config.TELEM_CSV.exists():
         with config.TELEM_CSV.open("w", newline="") as f:
             csv.writer(f).writerow(config.CSV_HEADER)
-        log_message("INFO","TLM",f"Created {config.TELEM_CSV}")
-
-ensure_csv()
-update_status_file(False)
 
 def is_duplicate(msg_id: str) -> bool:
     if not config.PROCESSED_IDS_FILE.exists():
@@ -59,92 +55,98 @@ def trim_csv():
         kept = [rows[0]] + rows[-config.MAX_ENTRIES:]
         with config.TELEM_CSV.open("w", newline="") as f:
             csv.writer(f).writerows(kept)
-        log_message("INFO","TLM",f"Trimmed to last {config.MAX_ENTRIES}")
 
 def process_telem_update(raw: str):
+    # Strip the "TELEM_" prefix
     if raw.startswith("TELEM_"):
         raw = raw[len("TELEM_"):]
-    parts = dict(item.split("=",1) for item in raw.split("|") if "=" in item)
+    parts = dict(item.split("=", 1) for item in raw.split("|") if "=" in item)
     for k in config.EXPECTED_KEYS:
-        parts.setdefault(k,"")
+        parts.setdefault(k, "")
     if not parts["LAT"] or not parts["LON"]:
-        log_message("FAILED","TLM","Missing LAT/LON")
+        print("Telemetry dropped: missing LAT/LON")
         return
+
     row = [
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         *(parts[k] for k in config.EXPECTED_KEYS),
-        random.randint(0,99)
+        random.randint(0, 99)
     ]
     try:
         with config.TELEM_CSV.open("a", newline="") as f:
             csv.writer(f).writerow(row)
-        log_message("SUCCESS","TLM","Appended telemetry")
-        trim_csv()
     except Exception as e:
-        log_message("FAILED","TLM",f"Append error: {e}")
+        print("Error appending telemetry:", e)
+    else:
+        trim_csv()
 
 def connection_monitor():
     global is_connected, last_tlm_time
     while True:
         time.sleep(10)
         with connection_lock:
-            if last_tlm_time is None or time.time() - last_tlm_time > 120:
+            if last_tlm_time is None or (time.time() - last_tlm_time) > 120:
                 if is_connected:
                     is_connected = False
                     update_status_file(False)
-                    log_message("INFO","CONN","Connection lost")
-
-def filter_alert_message(message: str) -> str:
-    return message[len("STAT_"):].strip()
-
-def display_popup(text: str):
-    def post():
-        #url = f"http://{get_local_ip()}:3000/api/alert"
-        #try:
-        #    requests.post(url, json={"message":text}).raise_for_status()
-        #except Exception as e:
-        #    log_message("FAILED","POPUP",f"{e}")
-        log_message("STAT","RECEIVED","Connection lost")
-    threading.Thread(target=post, daemon=True).start()
+                    print("Connection lost")
 
 def handle_message(packet, interface=None):
+    """Callback for every incoming packet on the mesh."""
     global is_connected, last_tlm_time
+    try:
+        if packet.get("fromId") != config.SOURCE_ID:
+            return
 
-    if packet.get("fromId","") != config.SOURCE_ID:
-        return
-    text   = packet.get("decoded",{}).get("text","")
-    msg_id = str(packet.get("id",""))
-    if not text or is_duplicate(msg_id):
-        return
-    mark_processed(msg_id)
-    log_message("RECEIVED","MSG",text)
+        text = packet.get("decoded", {}).get("text", "")
+        if not text:
+            return
 
-    if text.startswith("TLM_"):
-        with connection_lock:
-            is_connected  = True
-            last_tlm_time = time.time()
-        update_status_file(True)
-        log_message("RECEIVED","TLM",text)
-        process_telem_update(text)
+        msg_id = str(packet.get("id", ""))
+        if is_duplicate(msg_id):
+            return
+        mark_processed(msg_id)
 
-    elif text.startswith("STAT_"):
-        popup = filter_alert_message(text)
-        if popup:
-            display_popup(popup)
+        # Always print the raw message
+        print(f"[MSG {msg_id}] {text}")
+
+        if text.startswith("TLM_"):
+            # Telemetry branch
+            with connection_lock:
+                is_connected = True
+                last_tlm_time = time.time()
+            update_status_file(True)
+            process_telem_update(text)
+
+        elif text.startswith("STAT_"):
+            # STAT messages are simply printed
+            print(f"[STAT] {text[len('STAT_'):]}")
+
         else:
-            log_message("FAILED","POPUP",f"Bad STAT: {text}")
+            print(f"[UNKNOWN] {text}")
 
-    else:
-        log_message("FAILED","UNKNOWN",text)
+    except Exception as e:
+        # Catch *everything* so we never drop out of the callback
+        print("Error in handle_message:", e)
 
-# --- Main ---
-threading.Thread(target=connection_monitor, daemon=True).start()
+# Subscribe *before* creating the interface
 pub.subscribe(handle_message, "meshtastic.receive")
 
-print(f"Listening for Meshtastic messages from {config.SOURCE_ID}…")
-try:
-    while True:
-        time.sleep(0.1)
-except KeyboardInterrupt:
-    print("Shutting down…")
-    INTERFACE.close()
+if __name__ == "__main__":
+    # Prepare files & status
+    ensure_csv()
+    update_status_file(False)
+
+    # Start the connection-monitor thread
+    threading.Thread(target=connection_monitor, daemon=True).start()
+
+    # Now that our handler is in place, connect
+    INTERFACE = meshtastic.tcp_interface.TCPInterface(hostname=config.MESHTASTIC_HOST)
+    print(f"Listening for Meshtastic messages from {config.SOURCE_ID}…")
+
+    try:
+        while True:
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Shutting down…")
+        INTERFACE.close()
