@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import time
 import csv
 import random
@@ -7,20 +8,18 @@ import socket
 from datetime import datetime
 from queue import Queue
 from pubsub import pub
+from meshtastic.tcp_interface import TCPInterface
 
 import config
 from receive_logger import log_message
 
-# Reuse the singleton interface
-INTERFACE = config.INTERFACE
-
+# — Queue & threading setup —
 _incoming = Queue()
-
-# Connection tracking
 is_connected   = False
 last_tlm_time  = None
 connection_lock = threading.Lock()
 
+# — Your existing helpers unchanged —
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -41,9 +40,6 @@ def ensure_csv():
         with config.TELEM_CSV.open("w", newline="") as f:
             csv.writer(f).writerow(config.CSV_HEADER)
         log_message("INFO","TLM",f"Created {config.TELEM_CSV}")
-
-ensure_csv()
-update_status_file(False)
 
 def is_duplicate(msg_id: str) -> bool:
     if not config.PROCESSED_IDS_FILE.exists():
@@ -112,69 +108,38 @@ def display_popup(text: str):
             log_message("FAILED","POPUP",f"{e}")
     threading.Thread(target=post, daemon=True).start()
 
-def handle_message(packet, interface=None):
-    global is_connected, last_tlm_time
-
-    if packet.get("fromId","") != config.SOURCE_ID:
-        return
-    text   = packet.get("decoded",{}).get("text","")
-    msg_id = str(packet.get("id",""))
-    if not text or is_duplicate(msg_id):
-        return
-    mark_processed(msg_id)
-    log_message("RECEIVED","MSG",text)
-
-    if text.startswith("TLM_"):
-        with connection_lock:
-            is_connected  = True
-            last_tlm_time = time.time()
-        update_status_file(True)
-        log_message("RECEIVED","TLM",text)
-        process_telem_update(text)
-
-    elif text.startswith("STAT_"):
-        popup = filter_alert_message(text)
-        if popup:
-            display_popup(popup)
-        else:
-            log_message("FAILED","POPUP",f"Bad STAT: {text}")
-
-    else:
-        log_message("FAILED","UNKNOWN",text)
-
-# FAST Meshtastic callback: just enqueue and return immediately
+# — Meshtastic callback: only enqueue! —
 def _on_packet(packet, interface):
     _incoming.put(packet)
 
-# YOUR worker thread: guaranteed to run prints/csv/http in isolation
+# — Your own worker thread: does the print + full logic —
 def _worker():
     global is_connected, last_tlm_time
-
     while True:
         packet = _incoming.get()
         if packet is None:
             break
 
         try:
-            text   = packet.get("decoded", {}).get("text", "")
-            msg_id = str(packet.get("id", ""))
+            text   = packet.get("decoded",{}).get("text","")
+            msg_id = str(packet.get("id",""))
 
-            # quick sanity print
+            # <<< your diagnostic print — guaranteed to show up >>>
             print("→ got packet:", text, flush=True)
 
-            if packet.get("fromId", "") != config.SOURCE_ID:
+            if packet.get("fromId","") != config.SOURCE_ID:
                 continue
             if not text or is_duplicate(msg_id):
                 continue
             mark_processed(msg_id)
-            log_message("RECEIVED", "MSG", text)
+            log_message("RECEIVED","MSG", text)
 
             if text.startswith("TLM_"):
                 with connection_lock:
                     is_connected  = True
                     last_tlm_time = time.time()
                 update_status_file(True)
-                log_message("RECEIVED", "TLM", text)
+                log_message("RECEIVED","TLM", text)
                 process_telem_update(text)
 
             elif text.startswith("STAT_"):
@@ -182,28 +147,32 @@ def _worker():
                 if popup:
                     display_popup(popup)
                 else:
-                    log_message("FAILED", "POPUP", f"Bad STAT: {text}")
+                    log_message("FAILED","POPUP",f"Bad STAT: {text}")
 
             else:
-                log_message("FAILED", "UNKNOWN", text)
+                log_message("FAILED","UNKNOWN", text)
 
         except Exception as e:
-            log_message("FAILED", "WORKER", f"Exception in worker: {e!r}")
+            log_message("FAILED","WORKER", f"Exception: {e!r}")
 
         finally:
             _incoming.task_done()
 
-# --- Main setup ---
-# 1) start your worker
-threading.Thread(target=_worker, daemon=True).start()
 
-# 2) start connection monitor
+# — MAIN SETUP — 
+
+# 1) start worker & monitor threads
+threading.Thread(target=_worker, daemon=True).start()
 threading.Thread(target=connection_monitor, daemon=True).start()
 
-# 3) subscribe the tiny callback
+# 2) subscribe *before* opening the radio interface
 pub.subscribe(_on_packet, "meshtastic.receive")
 
-# 4) init CSV + status file
+# 3) now instantiate the one shared interface and override config.INTERFACE
+iface = TCPInterface(hostname=config.MESHTASTIC_HOST)
+config.INTERFACE = iface
+
+# 4) init CSV + status
 ensure_csv()
 update_status_file(False)
 
@@ -213,7 +182,6 @@ try:
         time.sleep(0.1)
 except KeyboardInterrupt:
     print("Shutting down…")
-    # signal worker to exit
-    _incoming.put(None)
+    _incoming.put(None)    # signal worker to exit
     _incoming.join()
-    INTERFACE.close()
+    iface.close()
