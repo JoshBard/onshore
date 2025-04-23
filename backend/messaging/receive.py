@@ -103,7 +103,7 @@ def display_popup(text: str):
     # Simplified to basic print for debugging
     print(f"Popup Message: {text}")
 
-def handle_message(packet, iface):
+def handle_message(packet, interface=None):
     global is_connected, last_tlm_time
     try:
         if packet.get("fromId", "") != config.SOURCE_ID:
