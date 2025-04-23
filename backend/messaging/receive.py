@@ -102,11 +102,12 @@ def filter_alert_message(message: str) -> str | None:
 
 def display_popup(text: str):
     def post():
-        url = f"http://{get_local_ip()}:3000/api/alert"
-        try:
-            requests.post(url, json={"message":text}).raise_for_status()
-        except Exception as e:
-            log_message("FAILED","POPUP",f"{e}")
+        #url = f"http://{get_local_ip()}:3000/api/alert"
+        #try:
+        #    requests.post(url, json={"message":text}).raise_for_status()
+        #except Exception as e:
+        #    log_message("FAILED","POPUP",f"{e}")
+        log_message("STATUS", "RECEIVED", text)
     threading.Thread(target=post, daemon=True).start()
 
 def handle_message(packet, interface=None):
