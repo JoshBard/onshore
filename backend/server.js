@@ -10,6 +10,7 @@ const { spawn, execFile } = require('child_process');
 const os = require('os');
 
 const app = express();
+const axios   = require('axios');
 const server = http.createServer(app);
 const PORT = 3000;
 
@@ -54,7 +55,7 @@ io.on('connection', (socket) => {
     console.log(`Received command to send: ${command}`);
 
     // Spawn the shell script and pass the command as an argument
-    const shellProcess = spawn(venvPath, [transmitPath, 'MAN', command]);
+    axios.post('http://127.0.0.1:5000/send', {type: 'MAN', payload: command}).catch(err => console.error('keypress send error', err));
 
     // Handle stdout (output from the shell script)
     shellProcess.stdout.on('data', (data) => {
@@ -255,164 +256,127 @@ app.post('/uploadWaypoints', (req, res) => {
 /**
  * 6) Transmit waypoints to onboard
  */
-app.post('/sendWaypoints', (req, res) => {
-    const process = spawn(venvPath, [transmitPath, 'WP']);
-
-    let outputData = '';
-    let errorData = '';
-
-    process.stdout.on('data', (data) => {
-        outputData += data.toString();
-    });
-
-    process.stderr.on('data', (data) => {
-        errorData += data.toString();
-    });
-
-    process.on('close', (code) => {
-        if (code !== 0) {
-            console.error(`Script exited with code ${code}: ${errorData}`);
-            return res.status(500).json({ success: false, error: errorData });
-        }
-
-        console.log(`Script output: ${outputData}`);
-        res.json({ success: true, message: 'Waypoints sent successfully.', output: outputData });
-    });
+app.post('/sendWaypoints', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/sendWaypoints');
+    res.json({ success: true, message: 'Waypoints sent successfully.' });
+  } catch (err) {
+    console.error('Error sending waypoints:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
 });
 
 /**
  * 7) Start and stop manual mode
  */
-app.post('/start_manual', (req, res) => {
-  const process = spawn(venvPath, [transmitPath, 'MSSN', 'START_MSSN']);
-
-  process.on('close', (code) => {
-      if (code !== 0) {
-          console.error(`Error starting manual mode, exit code: ${code}`);
-          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
-      }
-      res.json({ success: true, message: 'Manual mode started' });
-  });
+app.post('/start_manual', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/start_manual');
+    res.json({ success: true, message: 'Start manual sent successfully.' });
+  } catch (err) {
+    console.error('Error sending start manual mode:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
 });
 
-app.post('/stop_manual', (req, res) => {
-  const process = spawn(venvPath, [transmitPath, 'MSSN', 'STOP_MAN']);
-
-  process.on('close', (code) => {
-      if (code !== 0) {
-          console.error(`Error stopping manual mode, exit code: ${code}`);
-          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
-      }
-      res.json({ success: true, message: 'Manual mode stopped' });
-  });
+app.post('/stop_manual', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/stop_manual');
+    res.json({ success: true, message: 'Stop manual sent successfully.' });
+  } catch (err) {
+    console.error('Error sending stop manual mode:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
 });
 
 /**
  * 8) start and stop the mission 
  */
-app.post('/start_mission', (req, res) => {
-  const process = spawn(venvPath, [transmitPath, 'MSSN', 'START_MSSN']);
-
-  process.on('close', (code) => {
-      if (code !== 0) {
-          console.error(`Error starting mission, exit code: ${code}`);
-          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
-      }
-      res.json({ success: true, message: 'Mission started' });
-  });
+app.post('/start_mission', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/start_mission');
+    res.json({ success: true, message: 'Start mission sent successfully.' });
+  } catch (err) {
+    console.error('Error sending start mission:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
 });
 
-app.post('/resume_manual', (req, res) => {
-  const process = spawn(venvPath, [transmitPath, 'MSSN', 'RESUME_MSSN']);
-
-  process.on('close', (code) => {
-    if (code !== 0) {
-        console.error(`Error resuming mission, exit code: ${code}`);
-        return res.status(500).json({ success: false, error: `Exit code: ${code}` });
-    }
-    res.json({ success: true, message: 'Mission resumed' });
-  })
-})
-
-app.post('/stop_mission', (req, res) => {
-  const process = spawn(venvPath, [transmitPath, 'MSSN', 'STOP_MSSN']);
-
-  process.on('close', (code) => {
-      if (code !== 0) {
-          console.error(`Error stopping mission, exit code: ${code}`);
-          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
-      }
-      res.json({ success: true, message: 'Mission stopped' });
-  });
+app.post('/resume_manual', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/resume_manual');
+    res.json({ success: true, message: 'Resume manual sent successfully.' });
+  } catch (err) {
+    console.error('Error sending resume manual:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
 });
 
+app.post('/stop_mission', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/stop_mission');
+    res.json({ success: true, message: 'Stop mission sent successfully.' });
+  } catch (err) {
+    console.error('Error sending stop mission:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
+});
 /**
  * 9) arm & disarm
  */
-app.post('/arm', (req, res) => {
-  const process = spawn(venvPath, [transmitPath, 'MSSN', 'ARM']);
-
-  process.on('close', (code) => {
-      if (code !== 0) {
-          console.error(`Error arming vessel, exit code: ${code}`);
-          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
-      }
-      res.json({ success: true, message: 'Vessel armed' });
-  });
+app.post('/arm', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/arm');
+    res.json({ success: true, message: 'Arm sent successfully.' });
+  } catch (err) {
+    console.error('Error sending arm:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
 });
 
-app.post('/disarm', (req, res) => {
-  const process = spawn(venvPath, [transmitPath, 'MSSN', 'DISARM']);
-
-  process.on('close', (code) => {
-      if (code !== 0) {
-          console.error(`Error disarming vessel, exit code: ${code}`);
-          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
-      }
-      res.json({ success: true, message: 'Vessel disarmed' });
-  });
+app.post('/disarm', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/disarm');
+    res.json({ success: true, message: 'Disarm sent successfully.' });
+  } catch (err) {
+    console.error('Error sending disarm:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
 });
 
 /**
  * 10) Return to home
  */
-app.post('/rtl', (req, res) => {
-  const process = spawn(venvPath, [transmitPath, 'MSSN', 'START_RTL']);
-
-  process.on('close', (code) => {
-      if (code !== 0) {
-          console.error(`Error returning vessel home: ${code}`);
-          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
-      }
-      res.json({ success: true, message: 'Vessel on its way home' });
-  });
+app.post('/rtl', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/rtl');
+    res.json({ success: true, message: 'RTL sent successfully.' });
+  } catch (err) {
+    console.error('Error sending RTL:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
 });
-
 /**
  * 11) Toggle autonomous mode
  */
-app.post('/sailboat', (req, res) => {
-  const process = spawn(venvPath, [transmitPath, 'MSSN', 'SAIL']);
-
-  process.on('close', (code) => {
-      if (code !== 0) {
-          console.error(`Error switching to sail power: ${code}`);
-          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
-      }
-      res.json({ success: true, message: 'Vessel is under sail power' });
-  });
+app.post('/sailboat', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/sailboat');
+    res.json({ success: true, message: 'Sailboat mode sent successfully.' });
+  } catch (err) {
+    console.error('Error sending sailboat mode:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
 });
 
-app.post('/motor_boat', (req, res) => {
-  const process = spawn(venvPath, [transmitPath, 'MSSN', 'MOTOR']);
-
-  process.on('close', (code) => {
-      if (code !== 0) {
-          console.error(`Error switching to motor power: ${code}`);
-          return res.status(500).json({ success: false, error: `Exit code: ${code}` });
-      }
-      res.json({ success: true, message: 'Vessel is under motor power' });
-  });
+app.post('/motor_boat', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/motor_boat');
+    res.json({ success: true, message: 'Motor mode sent successfully.' });
+  } catch (err) {
+    console.error('Error sending motor mode:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
 });
 
 /**
