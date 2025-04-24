@@ -9,7 +9,7 @@ from pubsub import pub
 
 import config
 from receive_logger import log_message
-from flask import Flask
+from flask import Flask, request
 from transmit import process_manual, process_mission, process_waypoints
 
 # Reuse the singleton interface
@@ -225,6 +225,3 @@ try:
 except KeyboardInterrupt:
     print("Shutting down…")
     INTERFACE.close()
-
-if __name__=="__main__":
-    main()
