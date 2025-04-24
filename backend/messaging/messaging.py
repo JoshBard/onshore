@@ -225,3 +225,6 @@ try:
 except KeyboardInterrupt:
     print("Shutting down…")
     INTERFACE.close()
+
+if __name__=="__main__":
+    main()
