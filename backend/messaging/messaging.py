@@ -142,11 +142,15 @@ def connection_monitor():
 
 def display_popup(text: str):
     def post():
-        url = f"http://{get_local_ip()}:3000/api/alert"
+        url = "http://127.0.0.1:3000/api/alert"
         try:
-            requests.post(url, json={"message": text}).raise_for_status()
+            resp = requests.post(url, json={"message": text}, timeout=2)
+            resp.raise_for_status()
+            log_message("SUCCESS","POPUP",f"Alert sent: {text}")
         except Exception as e:
-            log_message("FAILED","POPUP", f"{e}")
+            # now you’ll see the failure in your receive logs:
+            log_message("FAILED","POPUP",f"{e}")
+            print("Popup POST failed:", e)
     threading.Thread(target=post, daemon=True).start()
 
 def handle_message(packet, interface=None):

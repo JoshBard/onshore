@@ -6,11 +6,11 @@ const socketIo = require('socket.io');
 const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
+const axios = require('axios');
 const { spawn, execFile } = require('child_process');
 const os = require('os');
 
 const app = express();
-const axios   = require('axios');
 const server = http.createServer(app);
 const PORT = 3000;
 
@@ -18,23 +18,18 @@ app.use(cors());
 app.use(express.json());
 
 // Path to the CSV file
-const telemtryFilePath = path.join(__dirname, 'telemetry_data', 'live_telem.csv');
-const waypointsFilePath = path.join(__dirname, 'waypoints', 'waypoints.csv');
-const transmitPath = path.join(__dirname, 'messaging', 'transmit.py');
-const statusPath = path.join(__dirname, 'messaging', 'connection_status.txt');
-const venvPath = path.join(__dirname, '..', '..', 'venv', 'bin', 'python3');
-const changeWifiPath = path.join(__dirname, './change_wifi.sh');
+const telemtryFilePath   = path.join(__dirname, 'telemetry_data', 'live_telem.csv');
+const waypointsFilePath = path.join(__dirname, 'waypoints',       'waypoints.csv');
+const statusPath        = path.join(__dirname, 'messaging',       'connection_status.txt');
+const venvPath          = path.join(__dirname, '..', '..', 'venv', 'bin', 'python3');
+const changeWifiPath    = path.join(__dirname, './change_wifi.sh');
 
-// Instantiate socket
+// WebSocket setup
 const io = socketIo(server, {
-  cors: {
-    origin: true,
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
+  cors: { origin: true, methods: ['GET','POST'], credentials: true }
 });
 
-// Get local IP address
+// Utility to get local IP
 function getLocalIPv4() {
   const nets = os.networkInterfaces();
   for (const name of Object.keys(nets)) {
@@ -46,31 +41,17 @@ function getLocalIPv4() {
 }
 
 /**
- * Only socket connection, used for WASD
+ *  WebSocket keypress → mesh send
  */
 io.on('connection', (socket) => {
   console.log('Client connected (WebSockets)');
 
   socket.on('keypress', (command) => {
     console.log(`Received command to send: ${command}`);
-
-    // Spawn the shell script and pass the command as an argument
-    axios.post('http://127.0.0.1:5000/send', {type: 'MAN', payload: command}).catch(err => console.error('keypress send error', err));
-
-    // Handle stdout (output from the shell script)
-    shellProcess.stdout.on('data', (data) => {
-        console.log(`Shell Output: ${data}`);
-    });
-
-    // Handle stderr (errors from the shell script)
-    shellProcess.stderr.on('data', (data) => {
-        console.error(`Shell Error: ${data}`);
-    });
-
-    // Handle process exit
-    shellProcess.on('close', (code) => {
-        console.log(`Shell script exited with code ${code}`);
-    });
+    axios.post('http://127.0.0.1:5000/send', {
+      type: 'MAN',
+      payload: command
+    }).catch(err => console.error('keypress send error', err));
   });
 
   socket.on('disconnect', () => {
@@ -78,9 +59,8 @@ io.on('connection', (socket) => {
   });
 });
 
-
 /**
- * 1) Return the Google Maps API key (from .env)
+ * 1) Return Google Maps API key
  */
 app.get('/api/mapkey', (req, res) => {
   res.json({ key: process.env.GOOGLE_MAPS_API_KEY });
@@ -91,7 +71,7 @@ app.get('/api/mapkey', (req, res) => {
  */
 app.get('/download_telemetry', (req, res) => {
   if (fs.existsSync(telemtryFilePath)) {
-    res.download(telemtryFilePath, 'live_telem.csv', (err) => {
+    res.download(telemtryFilePath, 'live_telem.csv', err => {
       if (err) {
         console.error('Error during file download:', err);
         res.status(500).send('Error downloading the file.');
@@ -101,10 +81,9 @@ app.get('/download_telemetry', (req, res) => {
     res.status(404).send('File not found.');
   }
 });
-
 app.get('/download_waypoints', (req, res) => {
   if (fs.existsSync(waypointsFilePath)) {
-    res.download(waypointsFilePath, 'waypoints.csv', (err) => {
+    res.download(waypointsFilePath, 'waypoints.csv', err => {
       if (err) {
         console.error('Error during file download:', err);
         res.status(500).send('Error downloading the file.');
@@ -120,7 +99,7 @@ app.get('/download_waypoints', (req, res) => {
  */
 app.post('/clear_telemetry_csv', (req, res) => {
   if (fs.existsSync(telemtryFilePath)) {
-    fs.writeFile(telemtryFilePath, '', (err) => {
+    fs.writeFile(telemtryFilePath, '', err => {
       if (err) {
         console.error('Error clearing the file:', err);
         return res.status(500).send('Error clearing the file.');
@@ -131,10 +110,9 @@ app.post('/clear_telemetry_csv', (req, res) => {
     res.status(404).send('File not found.');
   }
 });
-
 app.post('/clear_waypoints_csv', (req, res) => {
   if (fs.existsSync(waypointsFilePath)) {
-    fs.writeFile(waypointsFilePath, '', (err) => {
+    fs.writeFile(waypointsFilePath, '', err => {
       if (err) {
         console.error('Error clearing the file:', err);
         return res.status(500).send('Error clearing the file.');
@@ -147,44 +125,32 @@ app.post('/clear_waypoints_csv', (req, res) => {
 });
 
 /**
- * 4) Get parsed data from CSV
+ * 4) Get parsed telemetry points
  */
 app.get('/points', (req, res) => {
   if (!fs.existsSync(telemtryFilePath)) {
     return res.status(404).json({ error: 'File not found.' });
   }
-
   try {
     const csvText = fs.readFileSync(telemtryFilePath, 'utf8');
-    const lines = csvText.split('\n').filter((ln) => ln.trim() !== '');
-
-    // Check if the first line is a header (assuming it contains "timestamp")
-    let header;
-    let dataLines;
+    const lines = csvText.split('\n').filter(ln => ln.trim() !== '');
+    let header, dataLines;
     if (lines[0].toLowerCase().includes('timestamp')) {
       header = lines[0].split(',').map(s => s.trim());
       dataLines = lines.slice(1);
     } else {
-      // Define header manually if not present.
-      header = ["timestamp", "BATT", "CUR", "LVL", "GPS_FIX", "GPS_SATS", "LAT", "LON", "ALT", "MODE", "sensor_data"];
+      header = ["timestamp","BATT","CUR","LVL","GPS_FIX","GPS_SATS","LAT","LON","ALT","MODE","sensor_data"];
       dataLines = lines;
     }
-
-    // Parse each CSV line into an object.
-    const points = dataLines.map((line) => {
-      const fields = line.split(',').map((s) => s.trim());
-      const point = {};
-      header.forEach((key, index) => {
-        point[key] = fields[index];
-      });
-      // Convert LAT and LON to numbers.
-      point.LAT = parseFloat(point.LAT);
-      point.LON = parseFloat(point.LON);
-      return point;
+    const points = dataLines.map(line => {
+      const fields = line.split(',').map(s => s.trim());
+      const obj = {};
+      header.forEach((key,i) => { obj[key] = fields[i]; });
+      obj.LAT = parseFloat(obj.LAT);
+      obj.LON = parseFloat(obj.LON);
+      return obj;
     });
-
-    // Build the returned object using only the expected telemetry keys.
-    const filteredPoints = points.map((p) => ({
+    const filtered = points.map(p => ({
       timestamp: p.timestamp,
       BATT: p.BATT,
       CUR: p.CUR,
@@ -196,8 +162,7 @@ app.get('/points', (req, res) => {
       ALT: p.ALT,
       MODE: p.MODE
     }));
-
-    res.json(filteredPoints);
+    res.json(filtered);
   } catch (err) {
     console.error('Error reading/parsing CSV:', err);
     res.status(500).json({ error: 'Error parsing file.' });
@@ -205,46 +170,30 @@ app.get('/points', (req, res) => {
 });
 
 /**
- * 5) Upload Waypoints (Save to CSV)
+ * 5) Upload waypoints CSV
  */
 app.post('/uploadWaypoints', (req, res) => {
   let { waypoints } = req.body;
-
   if (!Array.isArray(waypoints) || waypoints.length === 0) {
     return res.status(400).json({ error: 'No valid waypoints found.' });
   }
-
-  // Detect if the first row is a header and remove it if needed
-  const firstRow = waypoints[0];
-  const isHeader =
-    (typeof firstRow.lat === 'string' && /lat|latitude/i.test(firstRow.lat)) &&
-    (typeof firstRow.lng === 'string' && /long|lon|longitude/i.test(firstRow.lng));
-
-  if (isHeader) {
-    waypoints = waypoints.slice(1); // Remove header row
+  if (typeof waypoints[0].lat === 'string' && /lat|latitude/i.test(waypoints[0].lat)) {
+    waypoints = waypoints.slice(1);
   }
-
-  // Process and validate waypoints
-  const cleanedWaypoints = waypoints
-    .map(({ lat, lng }) => {
-      const cleanLat = parseFloat(lat);
-      const cleanLng = parseFloat(lng);
-      return !isNaN(cleanLat) && !isNaN(cleanLng) ? { lat: cleanLat, lng: cleanLng } : null;
+  const cleaned = waypoints
+    .map(({lat,lng}) => {
+      const la = parseFloat(lat), lo = parseFloat(lng);
+      return !isNaN(la)&&!isNaN(lo) ? {lat:la,lng:lo} : null;
     })
-    .filter(Boolean); // Remove invalid entries
-
-  if (cleanedWaypoints.length === 0) {
+    .filter(Boolean);
+  if (cleaned.length === 0) {
     return res.status(400).json({ error: 'No valid waypoints after processing.' });
   }
-
-  // Format the CSV data
   let csvContent = 'Index,Latitude,Longitude\n';
-  cleanedWaypoints.forEach((point, index) => {
-    csvContent += `${index + 1},${point.lat},${point.lng}\n`;
+  cleaned.forEach((pt,i) => {
+    csvContent += `${i+1},${pt.lat},${pt.lng}\n`;
   });
-
-  // Write the CSV file to the "waypoints" folder
-  fs.writeFile(waypointsFilePath, csvContent, (err) => {
+  fs.writeFile(waypointsFilePath, csvContent, err => {
     if (err) {
       console.error('Error writing waypoints file:', err);
       return res.status(500).json({ error: 'Failed to upload waypoints.' });
@@ -254,127 +203,124 @@ app.post('/uploadWaypoints', (req, res) => {
 });
 
 /**
- * 6) Transmit waypoints to onboard
+ * 6) sendWaypoints → /send type=WP
  */
 app.post('/sendWaypoints', async (req, res) => {
   try {
-    await axios.post('http://127.0.0.1:5000/sendWaypoints');
-    res.json({ success: true, message: 'Waypoints sent successfully.' });
+    await axios.post('http://127.0.0.1:5000/send', { type: 'WP' });
+    res.json({ success: true, message: 'Waypoints queued.' });
   } catch (err) {
-    console.error('Error sending waypoints:', err.toString());
+    console.error('Error queueing waypoints:', err.toString());
     res.status(500).json({ success: false, error: err.toString() });
   }
 });
 
 /**
- * 7) Start and stop manual mode
+ * 7) Manual mode endpoints → /send type=MSSN payload=...
  */
 app.post('/start_manual', async (req, res) => {
   try {
-    await axios.post('http://127.0.0.1:5000/start_manual');
-    res.json({ success: true, message: 'Start manual sent successfully.' });
+    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'START_MSSN' });
+    res.json({ success: true, message: 'Start manual queued.' });
   } catch (err) {
-    console.error('Error sending start manual mode:', err.toString());
+    console.error('Error queueing start manual:', err.toString());
     res.status(500).json({ success: false, error: err.toString() });
   }
 });
-
 app.post('/stop_manual', async (req, res) => {
   try {
-    await axios.post('http://127.0.0.1:5000/stop_manual');
-    res.json({ success: true, message: 'Stop manual sent successfully.' });
+    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'STOP_MAN' });
+    res.json({ success: true, message: 'Stop manual queued.' });
   } catch (err) {
-    console.error('Error sending stop manual mode:', err.toString());
+    console.error('Error queueing stop manual:', err.toString());
     res.status(500).json({ success: false, error: err.toString() });
   }
 });
 
 /**
- * 8) start and stop the mission 
+ * 8) Mission control endpoints → /send type=MSSN payload=...
  */
 app.post('/start_mission', async (req, res) => {
   try {
-    await axios.post('http://127.0.0.1:5000/start_mission');
-    res.json({ success: true, message: 'Start mission sent successfully.' });
+    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'START_MSSN' });
+    res.json({ success: true, message: 'Start mission queued.' });
   } catch (err) {
-    console.error('Error sending start mission:', err.toString());
+    console.error('Error queueing start mission:', err.toString());
     res.status(500).json({ success: false, error: err.toString() });
   }
 });
-
 app.post('/resume_manual', async (req, res) => {
   try {
-    await axios.post('http://127.0.0.1:5000/resume_manual');
-    res.json({ success: true, message: 'Resume manual sent successfully.' });
+    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'RESUME_MSSN' });
+    res.json({ success: true, message: 'Resume manual queued.' });
   } catch (err) {
-    console.error('Error sending resume manual:', err.toString());
+    console.error('Error queueing resume manual:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
+});
+app.post('/stop_mission', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'STOP_MSSN' });
+    res.json({ success: true, message: 'Stop mission queued.' });
+  } catch (err) {
+    console.error('Error queueing stop mission:', err.toString());
     res.status(500).json({ success: false, error: err.toString() });
   }
 });
 
-app.post('/stop_mission', async (req, res) => {
-  try {
-    await axios.post('http://127.0.0.1:5000/stop_mission');
-    res.json({ success: true, message: 'Stop mission sent successfully.' });
-  } catch (err) {
-    console.error('Error sending stop mission:', err.toString());
-    res.status(500).json({ success: false, error: err.toString() });
-  }
-});
 /**
- * 9) arm & disarm
+ * 9) Arm & Disarm
  */
 app.post('/arm', async (req, res) => {
   try {
-    await axios.post('http://127.0.0.1:5000/arm');
-    res.json({ success: true, message: 'Arm sent successfully.' });
+    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'ARM' });
+    res.json({ success: true, message: 'Arm queued.' });
   } catch (err) {
-    console.error('Error sending arm:', err.toString());
+    console.error('Error queueing arm:', err.toString());
     res.status(500).json({ success: false, error: err.toString() });
   }
 });
-
 app.post('/disarm', async (req, res) => {
   try {
-    await axios.post('http://127.0.0.1:5000/disarm');
-    res.json({ success: true, message: 'Disarm sent successfully.' });
+    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'DISARM' });
+    res.json({ success: true, message: 'Disarm queued.' });
   } catch (err) {
-    console.error('Error sending disarm:', err.toString());
+    console.error('Error queueing disarm:', err.toString());
     res.status(500).json({ success: false, error: err.toString() });
   }
 });
 
 /**
- * 10) Return to home
+ * 10) Return to home (RTL)
  */
 app.post('/rtl', async (req, res) => {
   try {
-    await axios.post('http://127.0.0.1:5000/rtl');
-    res.json({ success: true, message: 'RTL sent successfully.' });
+    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'START_RTL' });
+    res.json({ success: true, message: 'RTL queued.' });
   } catch (err) {
-    console.error('Error sending RTL:', err.toString());
-    res.status(500).json({ success: false, error: err.toString() });
-  }
-});
-/**
- * 11) Toggle autonomous mode
- */
-app.post('/sailboat', async (req, res) => {
-  try {
-    await axios.post('http://127.0.0.1:5000/sailboat');
-    res.json({ success: true, message: 'Sailboat mode sent successfully.' });
-  } catch (err) {
-    console.error('Error sending sailboat mode:', err.toString());
+    console.error('Error queueing RTL:', err.toString());
     res.status(500).json({ success: false, error: err.toString() });
   }
 });
 
+/**
+ * 11) Autonomous mode toggle
+ */
+app.post('/sailboat', async (req, res) => {
+  try {
+    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'SAIL' });
+    res.json({ success: true, message: 'Sail mode queued.' });
+  } catch (err) {
+    console.error('Error queueing sail mode:', err.toString());
+    res.status(500).json({ success: false, error: err.toString() });
+  }
+});
 app.post('/motor_boat', async (req, res) => {
   try {
-    await axios.post('http://127.0.0.1:5000/motor_boat');
-    res.json({ success: true, message: 'Motor mode sent successfully.' });
+    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'MOTOR' });
+    res.json({ success: true, message: 'Motor mode queued.' });
   } catch (err) {
-    console.error('Error sending motor mode:', err.toString());
+    console.error('Error queueing motor mode:', err.toString());
     res.status(500).json({ success: false, error: err.toString() });
   }
 });
@@ -384,7 +330,7 @@ app.post('/motor_boat', async (req, res) => {
  */
 app.get('/api/connection_status', (req, res) => {
   fs.readFile(statusPath, 'utf8', (err, data) => {
-    if(err){
+    if (err) {
       return res.status(500).json({ status: 'disconnected', error: err.message });
     }
     res.json({ status: data.trim() });
@@ -396,7 +342,6 @@ app.get('/api/connection_status', (req, res) => {
  */
 app.post('/api/alert', (req, res) => {
   const { message } = req.body;
-  // Emit the message to connected WebSocket clients
   io.emit('alert', message);
   res.sendStatus(200);
 });
@@ -404,55 +349,36 @@ app.post('/api/alert', (req, res) => {
 /**
  * 14) Change wifi network
  */
-
 app.post('/changewifi', (req, res) => {
   const { ssid, password } = req.body;
   if (!ssid || !password) {
-    return res
-      .status(400)
-      .json({ success: false, error: 'SSID and password are required' });
+    return res.status(400).json({ success: false, error: 'SSID and password are required' });
   }
-
   console.log('– running changewifi –');
   console.log('script exists:', fs.existsSync(changeWifiPath));
   console.log('mode:', (fs.statSync(changeWifiPath).mode & 0o777).toString(8));
-
   execFile(
     'sudo',
     ['-n', changeWifiPath, ssid, password],
-    {
-      env: process.env,
-      timeout: 15_000,
-      maxBuffer: 1024 * 512
-    },
+    { env: process.env, timeout: 15000, maxBuffer: 1024 * 512 },
     (err, stdout, stderr) => {
       console.log('→ execFile callback:', { err, stdout, stderr });
       if (err) {
         console.error('change_wifi.sh failed:', err.code, stderr || err.message);
-        return res
-          .status(500)
-          .json({ success: false, error: (stderr || err.message).trim() });
+        return res.status(500).json({ success: false, error: (stderr || err.message).trim() });
       }
       return res.json({ success: true, output: stdout.trim() });
     }
   );
 });
 
-// ————————————————————————————————
-// Now finally: serve React’s production build & catch‑all
-// ————————————————————————————————
+// Serve React build & catch-all
 app.use(express.static(path.join(__dirname, '../frontend/build')));
-
-// Only if no API/static route matched:
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
 });
 
-/**
- * Start the server
- */
+// Start server
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(
-    `Server is running on http://${getLocalIPv4()}:${PORT}`
-  );
+  console.log(`Server is running on http://${getLocalIPv4()}:${PORT}`);
 });
