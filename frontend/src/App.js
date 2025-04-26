@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { io } from 'socket.io-client';
 
 // Import your page components
 import Home from './pages/Home';
@@ -8,14 +9,28 @@ import MapPage from './pages/MapPage';
 import Manual from './pages/Manual';
 import Wifi from './pages/Wifi';
 
-// Import the Header component and our new GlobalAlert component
+// Import the Header component
 import Header from './components/Header';
-import GlobalAlert from './components/GlobalAlert';
 
 function App() {
   const [connectionStatus, setConnectionStatus] = useState(null);
 
-  // Function to fetch the connection status from the backend
+  // ——— Listen for backend "alert" events and pop up the native alert() ———
+  useEffect(() => {
+    const socket = io();  // connects to http://localhost:3000 by default
+    socket.on('connect', () => {
+      console.log('Socket connected:', socket.id);
+    });
+    socket.on('alert', msg => {
+      console.log('Received alert:', msg);
+      window.alert(msg);
+    });
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  // Fetch connection status every 10s
   const fetchConnectionStatus = async () => {
     try {
       const res = await fetch('/api/connection_status');
@@ -26,20 +41,18 @@ function App() {
         console.error('Error fetching connection status:', res.statusText);
         setConnectionStatus('disconnected');
       }
-    } catch (error) {
-      console.error('Error fetching connection status:', error);
+    } catch (err) {
+      console.error('Error fetching connection status:', err);
       setConnectionStatus('disconnected');
     }
   };
 
-  // Poll the connection status every 10 seconds
   useEffect(() => {
     fetchConnectionStatus();
     const interval = setInterval(fetchConnectionStatus, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // If still loading, show a simple message.
   if (connectionStatus === null) {
     return (
       <div style={{ textAlign: 'center', marginTop: '2rem' }}>
@@ -48,7 +61,6 @@ function App() {
     );
   }
 
-  // If disconnected, show a waiting screen.
   if (connectionStatus !== 'connected') {
     return (
       <div style={{ textAlign: 'center', marginTop: '2rem' }}>
@@ -58,12 +70,9 @@ function App() {
     );
   }
 
-  // Once connected, render the main UI.
   return (
     <Router>
-      {/* GlobalAlert listens for alerts and triggers window.alert */}
-      <GlobalAlert />
-      <Header /> {/* Header displayed on all pages */}
+      <Header />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/upload" element={<UploadPage />} />
