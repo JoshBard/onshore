@@ -1,26 +1,87 @@
-// src/components/GlobalAlert.js
-import React, { useEffect } from 'react';
-import io from 'socket.io-client';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { io } from 'socket.io-client';
 
-// Connect to your server's WebSocket endpoint. Adjust the URL as needed.
-const socket = io('http://yourserver.com:3000');
+// Import your page components
+import Home from './pages/Home';
+import UploadPage from './pages/UploadPage';
+import MapPage from './pages/MapPage';
+import Manual from './pages/Manual';
+import Wifi from './pages/Wifi';
 
-function GlobalAlert() {
+// Import the Header component
+import Header from './components/Header';
+
+function App() {
+  const [connectionStatus, setConnectionStatus] = useState(null);
+
+  // ——— Listen for backend "alert" events and pop up the native alert() ———
   useEffect(() => {
-    // Listen for an "alert" event.
-    socket.on('alert', (message) => {
-      // Directly trigger the browser's native alert dialog.
-      window.alert(message);
+    const socket = io();  // connects to http://localhost:3000 by default
+    socket.on('connect', () => {
+      console.log('Socket connected:', socket.id);
     });
-
-    // Clean up the listener on unmount.
+    socket.on('alert', msg => {
+      console.log('Received alert:', msg);
+      window.alert(msg);
+    });
     return () => {
-      socket.off('alert');
+      socket.disconnect();
     };
   }, []);
 
-  // This component doesn't render anything visible.
-  return null;
+  // Fetch connection status every 10s
+  const fetchConnectionStatus = async () => {
+    try {
+      const res = await fetch('/api/connection_status');
+      if (res.ok) {
+        const data = await res.json();
+        setConnectionStatus(data.status);
+      } else {
+        console.error('Error fetching connection status:', res.statusText);
+        setConnectionStatus('disconnected');
+      }
+    } catch (err) {
+      console.error('Error fetching connection status:', err);
+      setConnectionStatus('disconnected');
+    }
+  };
+
+  useEffect(() => {
+    fetchConnectionStatus();
+    const interval = setInterval(fetchConnectionStatus, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (connectionStatus === null) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+        <h2>Checking connection...</h2>
+      </div>
+    );
+  }
+
+  if (connectionStatus !== 'connected') {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+        <h2>Waiting for connection...</h2>
+        <img src="/logo192.pong" alt="Waiting for connection" />
+      </div>
+    );
+  }
+
+  return (
+    <Router>
+      <Header />
+      <Routes>
+        <Route path="/"         element={<Home />} />
+        <Route path="/upload"   element={<UploadPage />} />
+        <Route path="/map"      element={<MapPage />} />
+        <Route path="/manual"   element={<Manual />} />
+        <Route path="/wifi"     element={<Wifi />} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default GlobalAlert;
+export default App;
