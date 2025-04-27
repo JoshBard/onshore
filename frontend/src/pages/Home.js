@@ -1,3 +1,4 @@
+// Home.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
@@ -7,7 +8,6 @@ import {
   InfoWindow,
 } from '@react-google-maps/api';
 
-const BASE_URL = process.env.REACT_APP_ROUTER;
 const mapCenter = { lat: 41.55, lng: -71.4 };
 const mapContainerStyle = {
   width: '100%',
@@ -25,11 +25,11 @@ function Home() {
 
   const fetchData = async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/points`);
+      const response = await axios.get(`/points`);
       if (Array.isArray(response.data)) {
         setPoints(response.data);
       } else {
-        console.error("Invalid telemetry data format:", response.data);
+        console.error('Invalid telemetry data format:', response.data);
       }
     } catch (error) {
       console.error('Error fetching telemetry data:', error);
@@ -38,7 +38,7 @@ function Home() {
 
   const fetchMapKey = async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/api/mapkey`);
+      const response = await axios.get(`/api/mapkey`);
       setMapApiKey(response.data.key);
     } catch (error) {
       console.error('Error fetching Google Maps API key:', error);
@@ -54,9 +54,8 @@ function Home() {
 
   const handleClearCsv = async () => {
     try {
-      await axios.post(`${BASE_URL}/clear_telemetry_csv`);
+      await axios.post(`/clear_telemetry_csv`);
       setPoints([]);
-      console.log('Telemetry CSV cleared');
     } catch (error) {
       console.error('Error clearing telemetry CSV:', error);
     }
@@ -64,9 +63,8 @@ function Home() {
 
   const handleStartMission = async () => {
     try {
-      await axios.post(`${BASE_URL}/start_mission`);
+      await axios.post(`/start_mission`);
       setMissionStatus('running');
-      console.log('Mission started');
     } catch (error) {
       console.error('Error starting mission:', error);
     }
@@ -74,9 +72,8 @@ function Home() {
 
   const handleResumeMission = async () => {
     try {
-      await axios.post(`${BASE_URL}/resume_mission`);
+      await axios.post(`/resume_mission`);
       setMissionStatus('running');
-      console.log('Mission resumed');
     } catch (error) {
       console.error('Error resuming mission:', error);
     }
@@ -84,9 +81,8 @@ function Home() {
 
   const handleStopMission = async () => {
     try {
-      await axios.post(`${BASE_URL}/stop_mission`);
+      await axios.post(`/stop_mission`);
       setMissionStatus('stopped');
-      console.log('Mission stopped');
     } catch (error) {
       console.error('Error stopping mission:', error);
     }
@@ -94,8 +90,7 @@ function Home() {
 
   const handleArm = async () => {
     try {
-      await axios.post(`${BASE_URL}/arm`);
-      console.log('System armed');
+      await axios.post(`/arm`);
     } catch (error) {
       console.error('Error arming system:', error);
     }
@@ -103,8 +98,7 @@ function Home() {
 
   const handleDisarm = async () => {
     try {
-      await axios.post(`${BASE_URL}/disarm`);
-      console.log('System disarmed');
+      await axios.post(`disarm`);
     } catch (error) {
       console.error('Error disarming system:', error);
     }
@@ -112,8 +106,7 @@ function Home() {
 
   const handleReturnHome = async () => {
     try {
-      await axios.post(`${BASE_URL}/rtl`);
-      console.log('Returned to Home via /rtl endpoint');
+      await axios.post(`/rtl`);
     } catch (error) {
       console.error('Error returning to home:', error);
     }
@@ -123,15 +116,10 @@ function Home() {
     const newValue = parseInt(e.target.value, 10);
     setVesselTypeValue(newValue);
     try {
-      if (newValue === 0) {
-        await axios.post(`${BASE_URL}/motor_boat`);
-        console.log("Motor Boat selected");
-      } else {
-        await axios.post(`${BASE_URL}/sailboat`);
-        console.log("Sailboat selected");
-      }
+      const endpoint = newValue === 0 ? 'motor_boat' : 'sailboat';
+      await axios.post(`/${endpoint}`);
     } catch (error) {
-      console.error("Error toggling vessel type:", error);
+      console.error('Error toggling vessel type:', error);
     }
   };
 
@@ -141,31 +129,35 @@ function Home() {
         <h1>Telemetry Tracker</h1>
         {mapApiKey && (
           <LoadScript googleMapsApiKey={mapApiKey}>
-            <GoogleMap
-              mapContainerStyle={mapContainerStyle}
-              center={mapCenter}
-              zoom={10}
-            >
+            <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={10}>
               {points.slice(-25).map((pt, idx, arr) => (
                 <Marker
                   key={idx}
                   position={{ lat: pt.LAT, lng: pt.LON }}
                   icon={{
-                    url: idx === arr.length - 1
-                      ? 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
-                      : 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                    url:
+                      idx === arr.length - 1
+                        ? 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
+                        : 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
                   }}
                   onClick={() => setSelectedMarker({ idx, pt })}
                 />
               ))}
               {selectedMarker && (
                 <InfoWindow
-                  position={{ lat: selectedMarker.pt.LAT, lng: selectedMarker.pt.LON }}
+                  position={{
+                    lat: selectedMarker.pt.LAT,
+                    lng: selectedMarker.pt.LON,
+                  }}
                   onCloseClick={() => setSelectedMarker(null)}
                 >
                   <div>
-                    <b>Waypoint {points.length - 25 + selectedMarker.idx + 1}</b><br />
-                    Lat: {selectedMarker.pt.LAT}, Lng: {selectedMarker.pt.LON}
+                    <b>
+                      Waypoint {points.length - 25 + selectedMarker.idx + 1}
+                    </b>
+                    <br />
+                    Lat: {selectedMarker.pt.LAT}, Lng:{' '}
+                    {selectedMarker.pt.LON}
                   </div>
                 </InfoWindow>
               )}
@@ -174,24 +166,43 @@ function Home() {
         )}
 
         {/* Main Mission Controls */}
-        <div style={{ marginTop: '2rem', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button onClick={handleStartMission} style={{ padding: '12px', backgroundColor: '#007bff', color: 'white' }}>
+        <div
+          style={{
+            marginTop: '2rem',
+            display: 'flex',
+            gap: '10px',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
+          <button
+            onClick={handleStartMission}
+            style={{ padding: '12px', backgroundColor: '#007bff', color: 'white' }}
+          >
             Start Mission
           </button>
-          <button onClick={handleStopMission} style={{ padding: '12px', backgroundColor: '#dc3545', color: 'white' }}>
+          <button
+            onClick={handleStopMission}
+            style={{ padding: '12px', backgroundColor: '#dc3545', color: 'white' }}
+          >
             Stop Mission
           </button>
-          <button onClick={handleResumeMission} style={{ padding: '12px', backgroundColor: '#17a2b8', color: 'white' }}>
+          <button
+            onClick={handleResumeMission}
+            style={{ padding: '12px', backgroundColor: '#17a2b8', color: 'white' }}
+          >
             Resume Mission
           </button>
-          <button 
-            onClick={() => setShowAdditionalControls(!showAdditionalControls)} 
+          <button
+            onClick={() => setShowAdditionalControls(!showAdditionalControls)}
             style={{ padding: '12px', backgroundColor: '#6c757d', color: 'white' }}
           >
-            {showAdditionalControls ? 'Hide Additional Controls' : 'Show Additional Controls'}
+            {showAdditionalControls
+              ? 'Hide Additional Controls'
+              : 'Show Additional Controls'}
           </button>
-          <button 
-            onClick={() => setShowOverlay(true)} 
+          <button
+            onClick={() => setShowOverlay(true)}
             style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}
           >
             ℹ️
@@ -201,27 +212,43 @@ function Home() {
         {showAdditionalControls && (
           <div style={{ marginTop: '1rem', padding: '10px', border: '1px solid #ccc' }}>
             <h3>Additional Controls</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                flexWrap: 'wrap',
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ fontSize: '0.9rem' }}>Motor Boat</span>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="1" 
-                  value={vesselTypeValue} 
-                  onChange={handleVesselTypeSlider} 
-                  style={{ width: '100px' }} 
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="1"
+                  value={vesselTypeValue}
+                  onChange={handleVesselTypeSlider}
+                  style={{ width: '100px' }}
                 />
                 <span style={{ fontSize: '0.9rem' }}>Sailboat</span>
               </div>
-              <button onClick={handleReturnHome} style={{ padding: '12px', backgroundColor: '#ffc107', color: 'white' }}>
+              <button
+                onClick={handleReturnHome}
+                style={{ padding: '12px', backgroundColor: '#ffc107', color: 'white' }}
+              >
                 Return to Home
               </button>
-              <button onClick={handleArm} style={{ padding: '12px', backgroundColor: '#28a745', color: 'white' }}>
+              <button
+                onClick={handleArm}
+                style={{ padding: '12px', backgroundColor: '#28a745', color: 'white' }}
+              >
                 Arm
               </button>
-              <button onClick={handleDisarm} style={{ padding: '12px', backgroundColor: '#6c757d', color: 'white' }}>
+              <button
+                onClick={handleDisarm}
+                style={{ padding: '12px', backgroundColor: '#6c757d', color: 'white' }}
+              >
                 Disarm
               </button>
             </div>
@@ -230,7 +257,15 @@ function Home() {
       </div>
 
       {/* Right Side: Table + CSV Buttons */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', border: '1px solid #ccc', padding: '10px' }}>
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          border: '1px solid #ccc',
+          padding: '10px',
+        }}
+      >
         <h2>Live Location</h2>
         <div style={{ overflowY: 'auto', maxHeight: '250px' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -244,19 +279,22 @@ function Home() {
             </thead>
             <tbody>
               {points.length > 0 ? (
-                points.slice().reverse().map((pt, idx) => {
-                  const originalIndex = points.length - 1 - idx;
-                  return (
-                    <tr key={idx}>
-                      <td style={{ border: '1px solid black', padding: '5px', textAlign: 'center' }}>
-                        {originalIndex + 1}
-                      </td>
-                      <td style={{ border: '1px solid black', padding: '5px' }}>{pt.timestamp}</td>
-                      <td style={{ border: '1px solid black', padding: '5px' }}>{pt.LAT}</td>
-                      <td style={{ border: '1px solid black', padding: '5px' }}>{pt.LON}</td>
-                    </tr>
-                  );
-                })
+                points
+                  .slice()
+                  .reverse()
+                  .map((pt, idx) => {
+                    const originalIndex = points.length - 1 - idx;
+                    return (
+                      <tr key={idx}>
+                        <td style={{ border: '1px solid black', padding: '5px', textAlign: 'center' }}>
+                          {originalIndex + 1}
+                        </td>
+                        <td style={{ border: '1px solid black', padding: '5px' }}>{pt.timestamp}</td>
+                        <td style={{ border: '1px solid black', padding: '5px' }}>{pt.LAT}</td>
+                        <td style={{ border: '1px solid black', padding: '5px' }}>{pt.LON}</td>
+                      </tr>
+                    );
+                  })
               ) : (
                 <tr>
                   <td colSpan="4" style={{ textAlign: 'center', padding: '10px' }}>
@@ -269,7 +307,7 @@ function Home() {
         </div>
 
         <div style={{ marginTop: '10px' }}>
-          <a href={`${BASE_URL}/download_telemetry`} download>
+          <a href={`/download_telemetry`} download>
             <button>Download Telemetry</button>
           </a>
           <button onClick={handleClearCsv} style={{ marginLeft: '10px' }}>
@@ -288,12 +326,16 @@ function Home() {
                   <tbody>
                     {Object.entries(displayData).map(([key, value], idx) => (
                       <tr key={idx}>
-                        <td style={{ border: '1px solid black', padding: '5px', fontWeight: 'bold' }}>
+                        <td
+                          style={{
+                            border: '1px solid black',
+                            padding: '5px',
+                            fontWeight: 'bold',
+                          }}
+                        >
                           {key}
                         </td>
-                        <td style={{ border: '1px solid black', padding: '5px' }}>
-                          {value}
-                        </td>
+                        <td style={{ border: '1px solid black', padding: '5px' }}>{value}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -308,7 +350,7 @@ function Home() {
 
       {/* Overlay for Info */}
       {showOverlay && (
-        <div 
+        <div
           onClick={() => setShowOverlay(false)}
           style={{
             position: 'fixed',
@@ -320,7 +362,7 @@ function Home() {
             zIndex: 10000,
             display: 'flex',
             justifyContent: 'center',
-            alignItems: 'center'
+            alignItems: 'center',
           }}
         >
           <div style={{ background: 'white', padding: '20px', borderRadius: '4px' }}>

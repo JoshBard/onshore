@@ -3,9 +3,6 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
-// Adjust BASE_URL if needed
-const BASE_URL = process.env.REACT_APP_TEST;
-
 const mapContainerStyle = {
   width: '100%',
   height: '600px',
@@ -21,7 +18,7 @@ function MapPage() {
   useEffect(() => {
     const fetchKey = async () => {
       try {
-        const response = await axios.get(`${BASE_URL}/api/mapkey`);
+        const response = await axios.get(`/api/mapkey`);
         setMapKey(response.data.key);
       } catch (error) {
         console.error('Error fetching Maps API key:', error);
@@ -40,7 +37,7 @@ function MapPage() {
   // Clear the sensor CSV file on the server (if needed)
   const handleClearCsv = async () => {
     try {
-      const response = await axios.post(`${BASE_URL}/clear_waypoints_csv`);
+      const response = await axios.post(`/clear_waypoints_csv`);
       alert(response.data);
     } catch (error) {
       console.error('Error clearing CSV:', error);
@@ -51,8 +48,10 @@ function MapPage() {
   // Upload the current list of waypoints to the server
   const handleUploadCoordinates = async () => {
     try {
-      const response = await axios.post(`${BASE_URL}/uploadWaypoints`, { waypoints });
-      alert(response.data.message);
+      const upload_response = await axios.post(`/uploadWaypoints`, { waypoints });
+      alert(upload_response.data.message);
+      const send_response = await axios.post(`/sendWaypoints`);
+      alert(send_response.data.message);
     } catch (error) {
       console.error('Error uploading waypoints:', error);
       alert('Failed to upload waypoints.');
@@ -107,7 +106,7 @@ function MapPage() {
               justifyContent: 'center',
             }}
           >
-            <a href={`${BASE_URL}/download_waypoints`} download>
+            <a href={`/download_waypoints`} download>
               <button>Download Coordinates</button>
             </a>
             <button onClick={handleClearCsv} style={{ marginLeft: '5px' }}>
