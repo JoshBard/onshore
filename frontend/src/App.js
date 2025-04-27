@@ -10,12 +10,13 @@ import Manual from './pages/Manual';
 import Wifi from './pages/Wifi';
 
 // Import the Header component
-import Header from './components/Header';
+import Header     from './components/Header';
 
 function App() {
   const [connectionStatus, setConnectionStatus] = useState(null);
+  const [alertMessage, setAlertMessage]       = useState('');
 
-  // ——— Listen for backend "alert" events and pop up the native alert() ———
+  // Listen for backend "alert" events and show a non-blocking banner
   useEffect(() => {
     const socket = io();  // connects to http://localhost:3000 by default
     socket.on('connect', () => {
@@ -23,7 +24,8 @@ function App() {
     });
     socket.on('alert', msg => {
       console.log('Received alert:', msg);
-      window.alert(msg);
+      setAlertMessage(msg);
+      setTimeout(() => setAlertMessage(''), 5000);
     });
     return () => {
       socket.disconnect();
@@ -72,6 +74,23 @@ function App() {
 
   return (
     <Router>
+      {alertMessage && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          background: '#fffae6',
+          borderBottom: '1px solid #f5c518',
+          color: '#333',
+          padding: '0.75rem',
+          textAlign: 'center',
+          fontWeight: 'bold',
+          zIndex: 1000
+        }}>
+          {alertMessage}
+        </div>
+      )}
       <Header />
       <Routes>
         <Route path="/" element={<Home />} />

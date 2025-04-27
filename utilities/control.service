@@ -19,8 +19,7 @@ ExecStart=/bin/bash -c ' \
   cd /home/jbardwick/Desktop && \
   source venv/bin/activate && \
   cd senior-design-UI/backend && npm start & \
-  cd senior-design-UI/frontend && npm start & \
-  #cd senior-design-UI/backend/messaging && python3 receive.py'
+  cd senior-design-UI/backend/messaging && python3 messaging.py'
 Restart=always
 RestartSec=10
 KillMode=control-group
