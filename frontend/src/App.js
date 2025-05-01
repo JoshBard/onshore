@@ -86,7 +86,7 @@ function App() {
     return (
       <FullScreenMessage
         message="Waiting for connection..."
-        imgSrc="/logo192.pong"
+        imgSrc="/offline.png"
       />
     );
   }
