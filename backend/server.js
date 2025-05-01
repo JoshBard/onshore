@@ -220,7 +220,7 @@ app.post('/sendWaypoints', async (req, res) => {
  */
 app.post('/start_manual', async (req, res) => {
   try {
-    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'START_MSSN' });
+    await axios.post('http://127.0.0.1:5000/send', { type: 'MSSN', payload: 'START_MAN' });
     res.json({ success: true, message: 'Start manual queued.' });
   } catch (err) {
     console.error('Error queueing start manual:', err.toString());
