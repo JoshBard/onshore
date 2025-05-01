@@ -133,7 +133,7 @@ const ManualControl = () => {
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
           onClick={() => sendCommand('FORWARD')}
-          onTouchStart={() => { handlePress(event); sendCommand('FORWARD'); }}
+          onTouchStart={(e) => { handlePress(e); sendCommand('FORWARD'); }}
           onTouchEnd={handleRelease}
           style={{ ...btnBase, fontSize: '18px', borderRadius: '6px' }}
         >
@@ -147,7 +147,7 @@ const ManualControl = () => {
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
           onClick={() => sendCommand('LEFT')}
-          onTouchStart={() => { handlePress(event); sendCommand('LEFT'); }}
+          onTouchStart={(e) => { handlePress(e); sendCommand('LEFT'); }}
           onTouchEnd={handleRelease}
           style={{ ...btnBase, fontSize: '18px', borderRadius: '6px' }}
         >
@@ -158,7 +158,7 @@ const ManualControl = () => {
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
           onClick={() => sendCommand('STOP')}
-          onTouchStart={() => { handlePress(event); sendCommand('STOP'); }}
+          onTouchStart={(e) => { handlePress(e); sendCommand('STOP'); }}
           onTouchEnd={handleRelease}
           style={{ ...btnBase, fontSize: '18px', borderRadius: '6px' }}
         >
@@ -169,7 +169,7 @@ const ManualControl = () => {
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
           onClick={() => sendCommand('RIGHT')}
-          onTouchStart={() => { handlePress(event); sendCommand('RIGHT'); }}
+          onTouchStart={(e) => { handlePress(e); sendCommand('RIGHT'); }}
           onTouchEnd={handleRelease}
           style={{ ...btnBase, fontSize: '18px', borderRadius: '6px' }}
         >
@@ -183,7 +183,7 @@ const ManualControl = () => {
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
           onClick={() => sendCommand('BACKWARD')}
-          onTouchStart={() => { handlePress(event); sendCommand('BACKWARD'); }}
+          onTouchStart={(e) => { handlePress(e); sendCommand('BACKWARD'); }}
           onTouchEnd={handleRelease}
           style={{ ...btnBase, fontSize: '18px', borderRadius: '6px' }}
         >
