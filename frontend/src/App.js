@@ -1,3 +1,4 @@
+// src/App.js
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { io } from 'socket.io-client';
@@ -10,21 +11,21 @@ import Manual from './pages/Manual';
 import Wifi from './pages/Wifi';
 
 // Import the Header component
-import Header     from './components/Header';
+import Header from './components/Header';
 
 function App() {
   const [connectionStatus, setConnectionStatus] = useState(null);
-  const [alertMessage, setAlertMessage]       = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
 
   // Listen for backend "alert" events and show a non-blocking banner
   useEffect(() => {
-    const socket = io();  // connects to http://localhost:3000 by default
+    const socket = io('http://localhost:3000');
     socket.on('connect', () => {
       console.log('Socket connected:', socket.id);
     });
     socket.on('alert', msg => {
       console.log('Received alert:', msg);
-      setAlertMessage(msg);
+      setAlertMessage(String(msg));
       setTimeout(() => setAlertMessage(''), 5000);
     });
     return () => {
@@ -55,6 +56,7 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Loading / waiting states
   if (connectionStatus === null) {
     return (
       <div style={{ textAlign: 'center', marginTop: '2rem' }}>
@@ -67,38 +69,47 @@ function App() {
     return (
       <div style={{ textAlign: 'center', marginTop: '2rem' }}>
         <h2>Waiting for connection...</h2>
-        <img src="/logo192.pong" alt="Waiting for connection" />
+        <img src="/offline.png" alt="Waiting for connection" />
       </div>
     );
   }
 
   return (
     <Router>
+      {/* Alert banner */}
       {alertMessage && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          background: '#fffae6',
-          borderBottom: '1px solid #f5c518',
-          color: '#333',
-          padding: '0.75rem',
-          textAlign: 'center',
-          fontWeight: 'bold',
-          zIndex: 1000
-        }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            background: '#fffae6',
+            borderBottom: '1px solid #f5c518',
+            color: '#333',
+            padding: '0.75rem',
+            textAlign: 'center',
+            fontWeight: 'bold',
+            zIndex: 9999,
+            whiteSpace: 'pre-wrap',
+            overflowWrap: 'break-word',
+          }}
+        >
           {alertMessage}
         </div>
       )}
-      <Header />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/upload" element={<UploadPage />} />
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/manual" element={<Manual />} />
-        <Route path="/wifi" element={<Wifi />} />
-      </Routes>
+
+      {/* Push header/content down when banner is present */}
+      <div style={{ paddingTop: alertMessage ? '3rem' : 0 }}>
+        <Header />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/upload" element={<UploadPage />} />
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/manual" element={<Manual />} />
+          <Route path="/wifi" element={<Wifi />} />
+        </Routes>
+      </div>
     </Router>
   );
 }

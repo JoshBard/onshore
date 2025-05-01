@@ -29,9 +29,9 @@ const ManualControl = () => {
     const handleKeyDown = (event) => {
       let command;
       switch (event.key.toLowerCase()) {
-        case 'w': command = 'FORWARD'; break;
+        case 'w': command = 'BACKWARD'; break;
         case 'a': command = 'LEFT'; break;
-        case 's': command = 'BACKWARD'; break;
+        case 's': command = 'FORWARD'; break;
         case 'd': command = 'RIGHT'; break;
         case ' ': command = 'STOP'; break;
         default: return;
