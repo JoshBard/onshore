@@ -30,9 +30,9 @@ const ManualControl = () => {
       let command;
       switch (event.key.toLowerCase()) {
         case 'w': command = 'BACKWARD'; break;
-        case 'a': command = 'LEFT'; break;
+        case 'a': command = 'RIGHT'; break;
         case 's': command = 'FORWARD'; break;
-        case 'd': command = 'RIGHT'; break;
+        case 'd': command = 'LEFT'; break;
         case ' ': command = 'STOP'; break;
         default: return;
       }
@@ -132,8 +132,8 @@ const ManualControl = () => {
           onMouseDown={handlePress}
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
-          onClick={() => sendCommand('FORWARD')}
-          onTouchStart={(e) => { handlePress(e); sendCommand('FORWARD'); }}
+          onClick={() => sendCommand('BACKWARD')}
+          onTouchStart={(e) => { handlePress(e); sendCommand('BACKWARD'); }}
           onTouchEnd={handleRelease}
           style={{ ...btnBase, fontSize: '18px', borderRadius: '6px' }}
         >
@@ -146,8 +146,8 @@ const ManualControl = () => {
           onMouseDown={handlePress}
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
-          onClick={() => sendCommand('LEFT')}
-          onTouchStart={(e) => { handlePress(e); sendCommand('LEFT'); }}
+          onClick={() => sendCommand('RIGHT')}
+          onTouchStart={(e) => { handlePress(e); sendCommand('RIGHT'); }}
           onTouchEnd={handleRelease}
           style={{ ...btnBase, fontSize: '18px', borderRadius: '6px' }}
         >
@@ -168,8 +168,8 @@ const ManualControl = () => {
           onMouseDown={handlePress}
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
-          onClick={() => sendCommand('RIGHT')}
-          onTouchStart={(e) => { handlePress(e); sendCommand('RIGHT'); }}
+          onClick={() => sendCommand('LEFT')}
+          onTouchStart={(e) => { handlePress(e); sendCommand('LEFT'); }}
           onTouchEnd={handleRelease}
           style={{ ...btnBase, fontSize: '18px', borderRadius: '6px' }}
         >
@@ -182,8 +182,8 @@ const ManualControl = () => {
           onMouseDown={handlePress}
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
-          onClick={() => sendCommand('BACKWARD')}
-          onTouchStart={(e) => { handlePress(e); sendCommand('BACKWARD'); }}
+          onClick={() => sendCommand('FORWARD')}
+          onTouchStart={(e) => { handlePress(e); sendCommand('FORWARD'); }}
           onTouchEnd={handleRelease}
           style={{ ...btnBase, fontSize: '18px', borderRadius: '6px' }}
         >
