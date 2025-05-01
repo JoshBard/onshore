@@ -173,7 +173,46 @@ def handle_message(packet, interface=None):
         log_message("RECEIVED","TLM", text)
         process_telem_update(text)
     elif text.startswith("STAT_"):
-        display_popup(text)
+        parts = text.split("_")
+        service = parts[1] if len(parts) > 1 else None
+
+        # 1) Manual control (STAT_MAN_<DIRECTION>_<0|1>)
+        if service == "MAN" and len(parts) == 4:
+            direction, result = parts[2], parts[3]
+            status = "succeeded" if result == "1" else "failed"
+            display_popup("Manual {} {}".format(direction.lower(), status))
+
+        # 2) Waypoints upload (STAT_WP_[..._]_<0|1>)
+        elif service == "WP" and len(parts) >= 3:
+            result = parts[-1]                    # grab the final “0” or “1”
+            status = "succeeded" if result == "1" else "failed"
+            display_popup("Waypoints upload {}".format(status))
+
+        # 3) Mission/manual commands (STAT_MSSN_<ACTION_PARTS>_<0|1>)
+        elif service == "MSSN" and len(parts) >= 3:
+            result = parts[-1]
+            action_key = "_".join(parts[2:-1])
+
+            # map payload strings to friendly names
+            friendly_names = {
+                "START_MSSN": "Start Mission",
+                "STOP_MAN":   "Stop Manual",
+                "RESUME_MSSN":"Resume Mission",
+                "STOP_MSSN":  "Stop Mission",
+                "ARM":        "Arm",
+                "DISARM":     "Disarm",
+                "START_RTL":  "Return to Home",
+                "SAIL":       "Sail Mode",
+                "MOTOR":      "Motor Mode",
+            }
+            friendly = friendly_names.get(action_key, action_key.replace("_", " ").title())
+            status = "succeeded" if result == "1" else "failed"
+            display_popup("{} {}".format(friendly, status))
+
+        # 4) Fallback for anything unexpected
+        else:
+            display_popup(text)
+
     else:
         log_message("FAILED","UNKNOWN", text)
 

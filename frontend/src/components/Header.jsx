@@ -1,32 +1,51 @@
+// src/components/Header.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const Header = () => {
+const navItems = [
+  { to: '/', label: 'Home' },
+  { to: '/upload', label: 'Upload Coordinates' },
+  { to: '/map', label: 'Select Coordinates' },
+  { to: '/manual', label: 'Manual Control Mode' },
+  { to: '/wifi', label: 'Change Network' },
+];
+
+export default function Header() {
   return (
-    <header style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: '#333',
-      padding: '10px'
-    }}>
-      <Link to="/" style={{ margin: '0 10px', textDecoration: 'none' }}>
-        <button style={{ padding: '8px 16px', cursor: 'pointer' }}>Home</button>
-      </Link>
-      <Link to="/upload" style={{ margin: '0 10px', textDecoration: 'none' }}>
-        <button style={{ padding: '8px 16px', cursor: 'pointer' }}>Upload Coordinates</button>
-      </Link>
-      <Link to="/map" style={{ margin: '0 10px', textDecoration: 'none' }}>
-        <button style={{ padding: '8px 16px', cursor: 'pointer' }}>Select Coordinates</button>
-      </Link>
-      <Link to="/manual" style={{ margin: '0 10px', textDecoration: 'none' }}>
-        <button style={{ padding: '8px 16px', cursor: 'pointer' }}>Manual Control Mode</button>
-      </Link>
-      <Link to="/wifi" style={{ margin: '0 10px', textDecoration: 'none' }}>
-        <button style={{ padding: '8px 16px', cursor: 'pointer' }}>Change Network</button>
-      </Link>
+    <header
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',          
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#333',
+        padding: '10px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 1000,
+      }}
+    >
+      {navItems.map(({ to, label }) => (
+        <Link
+          key={to}
+          to={to}
+          style={{
+            margin: '5px',
+            textDecoration: 'none',
+          }}
+        >
+          <button
+            style={{
+              padding: '12px 20px',     
+              minWidth: '100px',        
+              fontSize: '1rem',
+              cursor: 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        </Link>
+      ))}
     </header>
   );
-};
-
-export default Header;
+}
