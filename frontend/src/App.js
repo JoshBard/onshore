@@ -1,4 +1,3 @@
-// src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { io } from 'socket.io-client';
@@ -11,7 +10,7 @@ import Manual from './pages/Manual';
 import Wifi from './pages/Wifi';
 
 // Import the Header component
-import Header from './components/Header';
+import Header     from './components/Header';
 
 function App() {
   const [connectionStatus, setConnectionStatus] = useState(null);
@@ -19,11 +18,12 @@ function App() {
 
   // Listen for backend "alert" events and show a non-blocking banner
   useEffect(() => {
-    const socket = io();
+    const socket = io();  // connects to http://localhost:3000 by default
     socket.on('connect', () => {
       console.log('Socket connected:', socket.id);
     });
     socket.on('alert', msg => {
+      console.log('Received alert:', msg);
       setAlertMessage(msg);
       setTimeout(() => setAlertMessage(''), 5000);
     });
@@ -40,9 +40,11 @@ function App() {
         const data = await res.json();
         setConnectionStatus(data.status);
       } else {
+        console.error('Error fetching connection status:', res.statusText);
         setConnectionStatus('disconnected');
       }
-    } catch {
+    } catch (err) {
+      console.error('Error fetching connection status:', err);
       setConnectionStatus('disconnected');
     }
   };
@@ -53,87 +55,50 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // centered full-screen loading / waiting states, mobile-friendly
-  const FullScreenMessage = ({ message, imgSrc }) => (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        padding: '1rem',
-        boxSizing: 'border-box',
-        textAlign: 'center',
-      }}
-    >
-      <h2 style={{ marginBottom: '1rem' }}>{message}</h2>
-      {imgSrc && (
-        <img
-          src={imgSrc}
-          alt="status"
-          style={{ maxWidth: '80%', height: 'auto' }}
-        />
-      )}
-    </div>
-  );
-
   if (connectionStatus === null) {
-    return <FullScreenMessage message="Checking connection..." />;
+    return (
+      <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+        <h2>Checking connection...</h2>
+      </div>
+    );
   }
 
   if (connectionStatus !== 'connected') {
     return (
-      <FullScreenMessage
-        message="Waiting for connection..."
-        imgSrc="/offline.png"
-      />
+      <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+        <h2>Waiting for connection...</h2>
+        <img src="/logo192.pong" alt="Waiting for connection" />
+      </div>
     );
   }
 
   return (
     <Router>
-      {/* alert banner */}
       {alertMessage && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            background: '#fffae6',
-            borderBottom: '1px solid #f5c518',
-            color: '#333',
-            padding: '1rem',
-            fontSize: '1rem',
-            textAlign: 'center',
-            zIndex: 1000,
-            wordBreak: 'break-word',
-          }}
-        >
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          background: '#fffae6',
+          borderBottom: '1px solid #f5c518',
+          color: '#333',
+          padding: '0.75rem',
+          textAlign: 'center',
+          fontWeight: 'bold',
+          zIndex: 1000
+        }}>
           {alertMessage}
         </div>
       )}
-
-      {/* header */}
       <Header />
-
-      {/* main content */}
-      <main
-        style={{
-          paddingTop: alertMessage ? '4rem' : '1rem',
-          paddingBottom: '1rem',
-          boxSizing: 'border-box',
-        }}
-      >
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/upload" element={<UploadPage />} />
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/manual" element={<Manual />} />
-          <Route path="/wifi" element={<Wifi />} />
-        </Routes>
-      </main>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/upload" element={<UploadPage />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/manual" element={<Manual />} />
+        <Route path="/wifi" element={<Wifi />} />
+      </Routes>
     </Router>
   );
 }
