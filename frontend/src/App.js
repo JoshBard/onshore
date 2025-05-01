@@ -67,7 +67,7 @@ function App() {
     return (
       <div style={{ textAlign: 'center', marginTop: '2rem' }}>
         <h2>Waiting for connection...</h2>
-        <img src="/logo192.pong" alt="Waiting for connection" />
+        <img src="/offline.png" alt="Waiting for connection" />
       </div>
     );
   }

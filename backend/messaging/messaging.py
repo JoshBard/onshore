@@ -142,8 +142,7 @@ def connection_monitor():
 
 def display_popup(text: str):
     def post():
-        host = get_local_ip()
-        url = f"http://{host}:3000/api/alert"
+        url = "http://127.0.0.1:3000/api/alert"
         try:
             resp = requests.post(url, json={"message": text}, timeout=2)
             resp.raise_for_status()
