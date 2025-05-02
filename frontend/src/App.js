@@ -1,66 +1,103 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { io } from 'socket.io-client';
 
+// Import your page components
+import Home from './pages/Home';
+import UploadPage from './pages/UploadPage';
+import MapPage from './pages/MapPage';
+import Manual from './pages/Manual';
+import Wifi from './pages/Wifi';
+
+// Import the Header component
+import Header from './components/Header';
+
 function App() {
+  const [connectionStatus, setConnectionStatus] = useState(null);
   const [alertMessage, setAlertMessage] = useState('');
 
+  // Listen for backend "alert" events and show a non-blocking banner
   useEffect(() => {
-    const socket = io('http://localhost:3000');
-
-    socket.on('connect', () =>
-      console.log('socket connected', socket.id)
-    );
-
+    const socket = io();  // connects to http://localhost:3000 by default
+    socket.on('connect', () => {
+      console.log('Socket connected:', socket.id);
+    });
     socket.on('alert', msg => {
-      console.log('alert event received:', msg);
+      console.log('Received alert:', msg);
       setAlertMessage(msg);
       setTimeout(() => setAlertMessage(''), 5000);
     });
-
-    socket.on('connect_error', err =>
-      console.error('socket connection error:', err)
-    );
-
-    return () => socket.disconnect();
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
-  return (
-    <div>
-      {/* Manual test button */}
-      <button
-        onClick={() => setAlertMessage('Manual test banner')}
-        style={{ margin: '1rem' }}
-      >
-        Show Test Banner
-      </button>
+  // Fetch connection status every 10s
+  const fetchConnectionStatus = async () => {
+    try {
+      const res = await fetch('/api/connection_status');
+      if (res.ok) {
+        const data = await res.json();
+        setConnectionStatus(data.status);
+      } else {
+        console.error('Error fetching connection status:', res.statusText);
+        setConnectionStatus('disconnected');
+      }
+    } catch (err) {
+      console.error('Error fetching connection status:', err);
+      setConnectionStatus('disconnected');
+    }
+  };
 
-      {/* The banner */}
+  useEffect(() => {
+    fetchConnectionStatus();
+    const interval = setInterval(fetchConnectionStatus, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (connectionStatus === null) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+        <h2>Checking connection...</h2>
+      </div>
+    );
+  }
+
+  if (connectionStatus !== 'connected') {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+        <h2>Waiting for connection...</h2>
+        <img src="/offline.png" alt="Waiting for connection" />
+      </div>
+    );
+  }
+
+  return (
+    <Router>
+      <Header />
+  
       {alertMessage && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            background: '#fffae6',
-            borderBottom: '1px solid #f5c518',
-            padding: '0.75rem',
-            textAlign: 'center',
-            fontWeight: 'bold',
-            zIndex: 1000,
-          }}
-        >
+        <div style={{
+          background: '#fffae6',
+          borderBottom: '1px solid #f5c518',
+          color: '#333',
+          padding: '0.75rem',
+          textAlign: 'center',
+          fontWeight: 'bold'
+        }}>
           {alertMessage}
         </div>
       )}
-
-      {/* Rest of your app would go here */}
-      <div style={{ marginTop: alertMessage ? '3rem' : 0 }}>
-        {/* ... */}
-        <p>Your app content</p>
-      </div>
-    </div>
-  );
+  
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/upload" element={<UploadPage />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/manual" element={<Manual />} />
+        <Route path="/wifi" element={<Wifi />} />
+      </Routes>
+    </Router>
+  );  
 }
 
 export default App;
