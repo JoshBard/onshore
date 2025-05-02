@@ -12,9 +12,11 @@ import Wifi from './pages/Wifi';
 // Import the Header component
 import Header     from './components/Header';
 
+app.use(express.json());
+
 function App() {
   const [connectionStatus, setConnectionStatus] = useState(null);
-  const [alertMessage, setAlertMessage]       = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
 
   // Listen for backend "alert" events and show a non-blocking banner
   useEffect(() => {
