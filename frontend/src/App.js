@@ -10,9 +10,7 @@ import Manual from './pages/Manual';
 import Wifi from './pages/Wifi';
 
 // Import the Header component
-import Header     from './components/Header';
-
-app.use(express.json());
+import Header from './components/Header';
 
 function App() {
   const [connectionStatus, setConnectionStatus] = useState(null);
