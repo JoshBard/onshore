@@ -184,7 +184,7 @@ def handle_message(packet, interface=None):
             display_popup(f"Manual {direction.lower()} {status}")
 
         # 2) Waypoints upload (STAT_WP_[..._]_<0|1>)
-        elif service == "WP" and len(parts) >= 3:
+        elif service == "UPLOAD" and len(parts) >= 3:
             result = parts[-1]
             status = "succeeded" if result == "0" else "failed"
             display_popup(f"Waypoints upload {status}")
