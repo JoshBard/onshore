@@ -341,7 +341,7 @@ app.get('/api/connection_status', (req, res) => {
  * 13) Error messaging
  */
 app.post('/api/alert', (req, res) => {
-  console.log('➡️  POST /api/alert →', req.body);
+  console.log('POST /api/alert →', req.body);
   const { message } = req.body;
   io.emit('alert', message);
   res.sendStatus(200);
@@ -373,6 +373,13 @@ app.post('/changewifi', (req, res) => {
     }
   );
 });
+
+// test
+app.get('/ping', (req, res) => {
+  console.log('Received GET /ping');
+  res.send('pong');
+});
+
 
 // Serve React build & catch-all
 app.use(express.static(path.join(__dirname, '../frontend/build')));
