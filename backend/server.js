@@ -341,10 +341,12 @@ app.get('/api/connection_status', (req, res) => {
  * 13) Error messaging
  */
 app.post('/api/alert', (req, res) => {
+  console.log('➡️  POST /api/alert →', req.body);
   const { message } = req.body;
   io.emit('alert', message);
   res.sendStatus(200);
 });
+
 
 /**
  * 14) Change wifi network
